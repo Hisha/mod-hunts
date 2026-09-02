@@ -123,3 +123,16 @@ Two more class-style Elite prey join the canonical `prebuilt/911_elite_prey.sql`
 - **The Stormcaller** - Enhancement Shaman archetype using Lightning Shield, Stormstrike, Flame Shock, Earth Shock, Earthbind Totem, final-only Magma Totem, and a once-per-final Feral Spirit below 40%. The authored totem package is intentionally limited to Earthbind plus Magma rather than dropping a full four-totem field.
 
 Druid and Shaman player-resource techniques are triggered by Hunt AI just like the existing Warrior/Rogue techniques, avoiding reliance on player-only rage, energy, mana, stance, or combo-point behavior in creature shells. No schema change is required for 1.0.10.
+
+## 1.0.11-dev - Shadow Priest and Death Knight Elite archetypes
+
+Added two more class-style Elite Hunt prey to the canonical `prebuilt/911_elite_prey.sql` roster:
+
+- **The Dusk Confessor** - Shadow Priest archetype. Opens in Shadowform, maintains Shadow Word: Pain and Vampiric Touch, channels Mind Flay, bursts with Mind Blast, uses Psychic Scream through the existing encounter-local fear diminishing returns, and uses a once-per-final low-health Dispersion defensive pause.
+- **The Gravebound** - Death Knight archetype. Maintains disease pressure with Icy Touch and Plague Strike, uses Chains of Ice for control, Death Grip tactically at range, Death Strike for low-health sustain, Mind Freeze only while the hunter is casting, and a final low-health Raise Dead escalation.
+
+Death and Decay is implemented as true ground-targeted area denial at the hunter's current position rather than as an invisible unit-targeted damage effect. The stock spell therefore provides its normal visible ground circle, giving the hunter a positional warning and an opportunity to move while Grip and Chains make that movement tactically meaningful.
+
+Psychic Scream shares the same Elite fear DR framework proven by The Ashen Pact: full Hunt-controlled duration, then 50%, then 25%, then immunity until the DR reset window expires. This keeps class identity without recreating the original Warlock fear-lock problem.
+
+The Elite prebuilt cleanup header now covers the complete current Elite roster/templates so reapplying `911_elite_prey.sql` remains idempotent as new archetypes are added.

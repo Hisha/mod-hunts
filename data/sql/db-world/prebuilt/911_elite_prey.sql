@@ -1,10 +1,10 @@
--- Hunts 1.0.8-dev - Elite Hunt prey roster
+-- Hunts 1.0.11-dev - Elite Hunt prey roster
 -- Canonical Elite prey content only. Schema changes belong in db-world/updates.
 SET @HUNT_ACTIVATOR_ENTRY := 14999010;
 
-DELETE FROM `hunt_prey_ability` WHERE `prey_id` IN (100,101,102,103,104);
-DELETE FROM `hunt_prey` WHERE `id` IN (100,101,102,103,104);
-DELETE FROM `hunt_creature_template` WHERE `id` IN (1016,1017,1018,1019,1020);
+DELETE FROM `hunt_prey_ability` WHERE `prey_id` IN (100,101,102,103,104,105,106,107,108);
+DELETE FROM `hunt_prey` WHERE `id` IN (100,101,102,103,104,105,106,107,108);
+DELETE FROM `hunt_creature_template` WHERE `id` IN (1016,1017,1018,1019,1020,1021,1022,1023,1024);
 
 -- ---------------------------------------------------------------------------
 -- The Oathbreaker - Retribution Paladin archetype
@@ -217,3 +217,66 @@ INSERT INTO `hunt_prey_ability`
 (106005,106,2484,1,2500,4000,30000,36000,100,3,20,80,0,0,0,0,0,1,'Earthbind Totem - movement-control totem'),
 (106006,106,58734,1,6500,8500,30000,36000,100,2,30,80,0,0,0,0,0,1,'Magma Totem - final positional punishment'),
 (106007,106,51533,1,9000,12000,60000,60000,100,2,40,80,40,0,0,1,0,1,'Feral Spirit - once-per-final pressure below 40%');
+
+
+-- ---------------------------------------------------------------------------
+-- The Dusk Confessor - Shadow Priest archetype
+-- High Priestess Mar'li supplies a stock caster shell. Shadowform is applied
+-- by the Hunt combat brain at spawn; the rotation layers DoTs, Mind Flay and
+-- Mind Blast with DR-limited Psychic Scream and a final Dispersion defense.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1023,'Elite Hunt - The Dusk Confessor',14510,'The Dusk Confessor','Voice Beyond the Veil',14,1,0.95,0.90,1.10,1,
+ 'Elite Shadow-Priest-style prey; sustained shadow pressure, fear control, and defensive Dispersion.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(107,'The Dusk Confessor',10,80,0,1023,@HUNT_ACTIVATOR_ENTRY,4.75,7.75,2.5,2,1,20.0,50,2,1,
+ 'Elite Shadow Priest archetype; maintains DoTs and ranged pressure, uses DR-limited Psychic Scream, and Dispersion late in the final.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(107001,107,48125,0,800,1600,16000,19000,100,3,10,80,0,0,0,0,1,1,'Shadow Word: Pain - maintained DoT'),
+(107002,107,48160,0,1800,3000,15000,18000,100,3,20,80,0,0,0,0,1,1,'Vampiric Touch - maintained DoT'),
+(107003,107,48156,0,2600,3800,3500,5000,100,3,20,80,0,0,0,0,0,1,'Mind Flay - primary channeled pressure'),
+(107004,107,48127,0,4200,6000,7000,9500,100,3,20,80,0,0,0,0,0,1,'Mind Blast - ranged burst'),
+(107005,107,10890,1,7000,10000,24000,30000,100,3,30,80,0,0,0,0,0,1,'Psychic Scream - DR-limited close pressure escape'),
+(107006,107,47585,1,0,0,60000,60000,100,2,60,80,24,0,0,1,0,1,'Dispersion below 24% - once-per-final defensive pause');
+
+-- ---------------------------------------------------------------------------
+-- The Gravebound - Death Knight archetype
+-- Koltira Deathweaver supplies a stock Death Knight shell. Death and Decay is
+-- deliberately cast at the hunter's ground position so the visible AoE circle
+-- is a real positional hazard; Grip/Chains then punish careless movement.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1024,'Elite Hunt - The Gravebound',28912,'The Gravebound','Knight of the Black Earth',14,1,1.10,1.18,1.14,1,
+ 'Elite Death-Knight-style prey; diseases, Death Grip, Chains of Ice, Death and Decay, interrupts, and self-healing.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(108,'The Gravebound',10,80,0,1024,@HUNT_ACTIVATOR_ENTRY,5.25,8.50,2.5,2,0,0,50,2,1,
+ 'Elite Death Knight archetype; controls range with Grip/Chains and turns Death and Decay into visible area denial.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(108001,108,49909,0,700,1400,12000,15000,100,3,10,80,0,0,0,0,1,1,'Icy Touch - maintain Frost Fever pressure'),
+(108002,108,49921,0,1500,2400,12000,15000,100,3,10,80,0,0,1,0,1,1,'Plague Strike - maintain Blood Plague pressure'),
+(108003,108,49938,0,3500,5000,18000,24000,100,3,20,80,0,0,0,0,0,1,'Death and Decay - ground AoE at hunter position'),
+(108004,108,49576,0,6500,9000,22000,28000,100,3,20,80,0,0,0,0,0,1,'Death Grip - tactical ranged pull'),
+(108005,108,45524,0,2500,4000,12000,16000,100,3,20,80,0,0,0,0,1,1,'Chains of Ice - maintain movement control'),
+(108006,108,49924,0,5000,7000,8000,11000,100,3,30,80,55,0,1,0,0,1,'Death Strike below 55% - self-sustain through melee pressure'),
+(108007,108,47528,0,3000,4500,10000,14000,100,3,30,80,0,0,0,0,0,1,'Mind Freeze - held until hunter is casting'),
+(108008,108,46584,1,8000,11000,60000,60000,100,2,55,80,35,0,0,1,0,1,'Raise Dead - once-per-final ghoul pressure below 35%');

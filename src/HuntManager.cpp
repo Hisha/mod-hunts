@@ -2701,6 +2701,12 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
         prey->CastSpell(prey, 768, true); // Cat Form
         _druidBearPhase[r.CharacterGuid] = false;
     }
+    else if (r.PreyId == 107)
+    {
+        // The Dusk Confessor is always presented as a Shadow Priest; make the
+        // visual/class identity deterministic rather than depending on the shell.
+        prey->CastSpell(prey, 15473, true); // Shadowform
+    }
 
     // Combat style is prey-authored data. Ranged Elite prey use AzerothCore's
     // ranged chase generator so they try to maintain casting distance instead
@@ -2850,12 +2856,20 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
         bool const isCharge = ability.SpellId == 11578;
         bool const isBlink = ability.SpellId == 1953;
         bool const isVanish = runtime.PreyId == 103 && ability.SpellId == 26889;
-        bool const isFear = runtime.PreyId == 104 && ability.SpellId == 6215;
+        bool const isFear = (runtime.PreyId == 104 && ability.SpellId == 6215) ||
+            (runtime.PreyId == 107 && ability.SpellId == 10890);
+        bool const isDeathAndDecay = runtime.PreyId == 108 && ability.SpellId == 49938;
+        bool const isDeathGrip = runtime.PreyId == 108 && ability.SpellId == 49576;
+        bool const isMindFreeze = runtime.PreyId == 108 && ability.SpellId == 47528;
         if (isCharge && (distance < 8.0f || distance > 25.0f))
             continue;
         if (isBlink && (!hunt || hunt->CombatStyle != 1 || distance > _rangedPanicRange))
             continue;
         if (isFear && _fearDrStage[runtime.CharacterGuid] >= 3 && _fearDrResetTimers[runtime.CharacterGuid] > 0)
+            continue;
+        if (isDeathGrip && (distance < 8.0f || distance > 30.0f))
+            continue;
+        if (isMindFreeze && !player->HasUnitState(UNIT_STATE_CASTING))
             continue;
 
         Unit* target = ability.Target == 1 ? static_cast<Unit*>(prey) : static_cast<Unit*>(player);
@@ -2895,6 +2909,14 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
                 if (deathCoil != timerOwner->second.end())
                     deathCoil->second = std::max<uint32>(deathCoil->second, duration + 5000);
             }
+            else if (isDeathAndDecay)
+            {
+                // Death and Decay is real ground-targeted area denial. Cast it
+                // at the hunter's current position so the stock client renders
+                // the warning circle and the hunter can choose to move out.
+                prey->CastSpell(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(),
+                    ability.SpellId, true);
+            }
             else if (isBlink)
             {
                 // Blink is an escape, but a ranged prey must not blink itself out
@@ -2922,7 +2944,7 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
                 // maintain. Hunt AI owns their cooldowns, so trigger those melee
                 // techniques to make the authored class kit reliable.
                 bool const resourceDrivenMeleeTechnique = runtime.PreyId == 102 || runtime.PreyId == 103 ||
-                    runtime.PreyId == 105 || runtime.PreyId == 106;
+                    runtime.PreyId == 105 || runtime.PreyId == 106 || runtime.PreyId == 108;
                 prey->CastSpell(target, ability.SpellId, resourceDrivenMeleeTechnique);
             }
 
