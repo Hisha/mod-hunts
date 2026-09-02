@@ -16,6 +16,7 @@
 #include "Opcodes.h"
 #include "Player.h"
 #include "Random.h"
+#include "SpellAuras.h"
 #include "TemporarySummon.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -2708,6 +2709,9 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
 void HuntManager::InitializeAbilityTimers(HuntRuntime const& runtime, bool finalEncounter)
 {
     _abilityUsed.erase(runtime.CharacterGuid);
+    _fearDrStage.erase(runtime.CharacterGuid);
+    _fearDrResetTimers.erase(runtime.CharacterGuid);
+    _rogueReopenTimers.erase(runtime.CharacterGuid);
     auto& timers = _abilityTimers[runtime.CharacterGuid];
     timers.clear();
 
@@ -2749,6 +2753,37 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
     uint8 const encounterBit = runtime.ActivePreyFinal ? 2 : 1;
     float const distance = prey->GetDistance(player);
 
+    // Fear uses encounter-local diminishing returns so the Warlock keeps its
+    // signature control without repeatedly removing the hunter from play.
+    uint32& fearReset = _fearDrResetTimers[runtime.CharacterGuid];
+    if (fearReset > elapsedMs)
+        fearReset -= elapsedMs;
+    else if (fearReset)
+    {
+        fearReset = 0;
+        _fearDrStage[runtime.CharacterGuid] = 0;
+    }
+
+    // The Veiled Knife's Vanish is a short tactical reset, not an evade. Once
+    // the reposition window expires it reopens aggressively and resumes chase.
+    auto reopenIt = _rogueReopenTimers.find(runtime.CharacterGuid);
+    if (runtime.PreyId == 103 && reopenIt != _rogueReopenTimers.end())
+    {
+        if (reopenIt->second > elapsedMs)
+        {
+            reopenIt->second -= elapsedMs;
+            return;
+        }
+
+        _rogueReopenTimers.erase(reopenIt);
+        if (prey->GetDistance(player) <= 8.0f)
+            prey->CastSpell(player, 48691, true); // Ambush rank 10
+        else
+            prey->CastSpell(player, 1833, true);  // Cheap Shot fallback
+        prey->AI()->AttackStart(player);
+        prey->GetMotionMaster()->MoveChase(player);
+    }
+
     for (HuntPreyAbilityDefinition const& ability : abilityIt->second)
     {
         if (!ability.Enabled || !(ability.EncounterMask & encounterBit) || !ability.SpellId)
@@ -2782,9 +2817,13 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
         // until a ranged archetype is actually being pressured in close quarters.
         bool const isCharge = ability.SpellId == 11578;
         bool const isBlink = ability.SpellId == 1953;
+        bool const isVanish = runtime.PreyId == 103 && ability.SpellId == 26889;
+        bool const isFear = runtime.PreyId == 104 && ability.SpellId == 6215;
         if (isCharge && (distance < 8.0f || distance > 25.0f))
             continue;
         if (isBlink && (!hunt || hunt->CombatStyle != 1 || distance > _rangedPanicRange))
+            continue;
+        if (isFear && _fearDrStage[runtime.CharacterGuid] >= 3 && _fearDrResetTimers[runtime.CharacterGuid] > 0)
             continue;
 
         Unit* target = ability.Target == 1 ? static_cast<Unit*>(prey) : static_cast<Unit*>(player);
@@ -2793,7 +2832,38 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
 
         if (ability.ChancePct >= 100 || urand(1, 100) <= ability.ChancePct)
         {
-            if (isBlink)
+            if (isVanish)
+            {
+                // Vanish/reopen is intentionally kept inside the same Hunt
+                // combat encounter. Move behind the hunter while hidden, then
+                // reopen shortly afterward rather than clearing threat/evading.
+                prey->CastSpell(prey, ability.SpellId, true);
+                float const behind = player->GetOrientation() + 3.14159265f;
+                float const x = player->GetPositionX() + std::cos(behind) * 4.0f;
+                float const y = player->GetPositionY() + std::sin(behind) * 4.0f;
+                float const z = player->GetMap()->GetHeight(x, y, player->GetPositionZ() + 10.0f, true, 50.0f);
+                prey->GetMotionMaster()->MovePoint(103, x, y, z);
+                _rogueReopenTimers[runtime.CharacterGuid] = 1600;
+            }
+            else if (isFear)
+            {
+                prey->CastSpell(player, ability.SpellId, true);
+                uint8& stage = _fearDrStage[runtime.CharacterGuid];
+                uint32 duration = stage == 0 ? 6000 : (stage == 1 ? 3000 : 1500);
+                if (Aura* fear = player->GetAura(ability.SpellId, prey->GetGUID()))
+                {
+                    fear->SetMaxDuration(duration);
+                    fear->SetDuration(duration);
+                }
+                stage = std::min<uint8>(3, stage + 1);
+                _fearDrResetTimers[runtime.CharacterGuid] = duration + 15000;
+
+                // Do not immediately chain Death Coil after Fear.
+                auto deathCoil = timerOwner->second.find(104007);
+                if (deathCoil != timerOwner->second.end())
+                    deathCoil->second = std::max<uint32>(deathCoil->second, duration + 5000);
+            }
+            else if (isBlink)
             {
                 // Blink is an escape, but a ranged prey must not blink itself out
                 // of its own encounter leash. Predict a normal ~20-yard Blink;

@@ -291,6 +291,11 @@ private:
     std::unordered_map<uint32, std::unordered_map<uint32, uint32>> _abilityTimers;
     std::unordered_map<uint32, std::unordered_map<uint32, bool>> _abilityUsed;
     std::unordered_map<uint32, uint32> _movementReactionTimers;
+    // Elite class-brain transient state. These deliberately do not persist: a
+    // restarted encounter begins with fresh CC DR and signature cooldown state.
+    std::unordered_map<uint32, uint8> _fearDrStage;
+    std::unordered_map<uint32, uint32> _fearDrResetTimers;
+    std::unordered_map<uint32, uint32> _rogueReopenTimers;
     std::vector<HuntZoneDefinition> _zones;
     std::vector<HuntFinalLocationDefinition> _finalLocations;
     std::unordered_map<uint32, uint32> _giverEntries;

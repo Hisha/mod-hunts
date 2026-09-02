@@ -107,3 +107,10 @@ Two additional class-style Elite prey join the roster in the existing canonical 
 
 - **The Veiled Knife** - Rogue archetype using fast melee pressure, Rupture, Gouge, Evasion, Kidney Shot, and low-health Eviscerate burst. Rogue resource/combo-driven techniques are triggered by the Hunt AI so a creature shell does not depend on player-only energy/combo-point state.
 - **The Ashen Pact** - Warlock archetype maintaining ranged pressure with Shadow Bolt, Corruption, Curse of Agony, Fear, Immolate, Drain Life, and a low-health Death Coil. It shares the reusable ranged-spacing brain but has no Frost-Mage Blink/root behavior.
+
+
+## 1.0.9-dev - Rogue signature combat and Fear control tuning
+
+**The Veiled Knife** now has a Rogue-specific combat brain rather than only a melee ability list. It applies Deadly and Crippling Poison pressure and gains a true Vanish/reposition/reopen cycle. Vanish remains inside the active Hunt encounter, moves the prey behind the hunter, and reopens with Ambush (or Cheap Shot when range prevents Ambush) without clearing the Hunt or triggering an evade reset.
+
+**The Ashen Pact** keeps Fear as a signature Warlock tool but no longer chains full-duration fears. Hunt-owned Fear uses encounter-local diminishing returns of 6 seconds, 3 seconds, 1.5 seconds, then temporary immunity, resetting 15 seconds after the last Fear expires. Fear's authored cooldown is also widened to 24-30 seconds. A successful Fear pushes Death Coil back until at least five seconds after Fear ends so the Warlock cannot turn the two abilities into one long loss-of-control chain.

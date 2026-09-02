@@ -122,7 +122,10 @@ INSERT INTO `hunt_prey_ability`
 (103003,103,1776,0,4500,6500,18000,24000,80,3,20,80,0,0,1,0,0,1,'Gouge - short melee control'),
 (103004,103,26669,1,0,0,45000,45000,100,3,30,80,35,0,0,1,0,1,'Evasion below 35% - once per encounter'),
 (103005,103,8643,0,6500,9000,22000,28000,80,2,40,80,0,0,1,0,0,1,'Kidney Shot - final control'),
-(103006,103,48668,0,3500,5500,7000,9000,100,2,40,80,0,30,1,0,0,1,'Eviscerate - finishing burst when hunter is below 30%');
+(103006,103,48668,0,3500,5500,7000,9000,100,2,40,80,0,30,1,0,0,1,'Eviscerate - finishing burst when hunter is below 30%'),
+(103007,103,26889,1,12000,16000,30000,38000,100,3,30,80,0,0,0,0,0,1,'Vanish - reposition and reopen'),
+(103008,103,57970,0,1200,2200,9000,12000,100,3,20,80,0,0,1,0,0,1,'Deadly Poison IX - recurring poison pressure'),
+(103009,103,3409,0,3000,4500,15000,19000,85,3,20,80,0,0,1,0,1,1,'Crippling Poison - maintain movement pressure');
 
 -- ---------------------------------------------------------------------------
 -- The Ashen Pact - Affliction/Destruction Warlock archetype
@@ -150,7 +153,7 @@ INSERT INTO `hunt_prey_ability`
 (104001,104,47809,0,800,1800,3000,4500,100,3,10,80,0,0,0,0,0,1,'Shadow Bolt - primary ranged cast'),
 (104002,104,47813,0,1200,2400,15000,18000,100,3,10,80,0,0,0,0,1,1,'Corruption - maintain damage over time'),
 (104003,104,47864,0,2200,3800,18000,22000,100,3,20,80,0,0,0,0,1,1,'Curse of Agony - maintain curse pressure'),
-(104004,104,6215,0,5500,8000,22000,28000,85,3,20,80,0,0,0,0,0,1,'Fear - create casting space'),
+(104004,104,6215,0,7500,10000,24000,30000,100,3,20,80,0,0,0,0,0,1,'Fear - DR-limited casting space'),
 (104005,104,47811,0,3500,5500,12000,16000,90,2,30,80,0,0,0,0,1,1,'Immolate - final additional DoT pressure'),
 (104006,104,47857,0,6500,9000,14000,18000,85,2,40,80,45,0,0,0,0,1,'Drain Life below 45% - sustain in final'),
-(104007,104,47860,0,0,0,26000,32000,100,2,50,80,30,0,0,1,0,1,'Death Coil below 30% - once per final');
+(104007,104,47860,0,0,0,28000,34000,100,2,50,80,30,0,0,1,0,1,'Death Coil below 30% - once per final, anti-chain gated');
