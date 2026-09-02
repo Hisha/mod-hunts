@@ -41,6 +41,7 @@ enum class HuntsConfig
     EliteRangedRetreatRangePct,
     EliteRangedBlinkCooldownMs,
     EliteRangedReactionMs,
+    EliteRangedArenaRadius,
     SealStoreTier1Cost,
     SealStoreTier1MinItemLevel,
     SealStoreTier1MaxItemLevel,
@@ -89,6 +90,7 @@ public:
         SetConfigValue<float>(HuntsConfig::EliteRangedRetreatRangePct, "Hunts.Elite.Ranged.RetreatRangePct", 1.0f);
         SetConfigValue<uint32>(HuntsConfig::EliteRangedBlinkCooldownMs, "Hunts.Elite.Ranged.BlinkCooldownMs", 15000);
         SetConfigValue<uint32>(HuntsConfig::EliteRangedReactionMs, "Hunts.Elite.Ranged.ReactionMs", 500);
+        SetConfigValue<float>(HuntsConfig::EliteRangedArenaRadius, "Hunts.Elite.Ranged.ArenaRadius", 35.0f);
         SetConfigValue<uint32>(HuntsConfig::SealStoreTier1Cost, "Hunts.SealStore.Tier1.Cost", 5);
         SetConfigValue<uint32>(HuntsConfig::SealStoreTier1MinItemLevel, "Hunts.SealStore.Tier1.MinItemLevel", 213);
         SetConfigValue<uint32>(HuntsConfig::SealStoreTier1MaxItemLevel, "Hunts.SealStore.Tier1.MaxItemLevel", 219);
@@ -165,7 +167,8 @@ public:
             huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedPanicRange),
             huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedRetreatRangePct),
             huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteRangedBlinkCooldownMs),
-            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteRangedReactionMs));
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteRangedReactionMs),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedArenaRadius));
         sHuntMgr.ConfigureSealStoreTier(1,
             huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1Cost),
             huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1MinItemLevel),

@@ -195,7 +195,8 @@ public:
     uint32 GetSealBalance(Player const* player) const;
     void ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel);
     void ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct);
-    void ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs);
+    void ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs,
+        float rangedArenaRadius);
     uint32 GetSealStoreTierCost(uint8 tier) const;
     uint32 GetSealStoreTierMinItemLevel(uint8 tier) const;
     uint32 GetSealStoreTierMaxItemLevel(uint8 tier) const;
@@ -276,6 +277,7 @@ private:
     float _rangedRetreatRangePct = 1.0f;
     uint32 _rangedBlinkCooldownMs = 15000;
     uint32 _rangedReactionMs = 500;
+    float _rangedArenaRadius = 35.0f;
     uint8 _trackingProgressMin = 3;
     uint8 _trackingProgressMax = 7;
     float _groupCreditRadius = 100.0f;

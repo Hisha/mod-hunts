@@ -65,10 +65,13 @@ Hunts.Elite.RewardUpgradePoolPct = 0.70
 # become eligible. RetreatRangePct is multiplied by each prey's SQL preferred_range
 # when a root/slow creates a kiting opportunity. ReactionMs controls how often
 # movement decisions are reconsidered. Blink defaults to the Wrath Mage 15s cooldown.
+# ArenaRadius is the soft radius around the prey's encounter spawn/home position;
+# ranged prey kite inside it and re-center before stock creature evade can trigger.
 Hunts.Elite.Ranged.PanicRange = 10.0
 Hunts.Elite.Ranged.RetreatRangePct = 1.0
 Hunts.Elite.Ranged.BlinkCooldownMs = 15000
 Hunts.Elite.Ranged.ReactionMs = 500
+Hunts.Elite.Ranged.ArenaRadius = 35.0
 
 
 # ----------------------------------------------------------

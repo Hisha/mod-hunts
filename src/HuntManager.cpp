@@ -1111,12 +1111,14 @@ void HuntManager::ConfigureEliteRewardTargeting(bool requireUpgrade, float upgra
     _eliteRewardUpgradePoolPct = std::max(0.0f, std::min(1.0f, upgradePoolPct));
 }
 
-void HuntManager::ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs)
+void HuntManager::ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs,
+    float rangedArenaRadius)
 {
     _rangedPanicRange = std::max(3.0f, rangedPanicRange);
     _rangedRetreatRangePct = std::max(0.50f, rangedRetreatRangePct);
     _rangedBlinkCooldownMs = std::max<uint32>(5000, rangedBlinkCooldownMs);
     _rangedReactionMs = std::max<uint32>(100, rangedReactionMs);
+    _rangedArenaRadius = std::max(20.0f, rangedArenaRadius);
 }
 
 void HuntManager::ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel)
@@ -2774,10 +2776,21 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
         {
             if (isBlink)
             {
-                // Blink travels in the caster's facing direction. Face directly
-                // away from the hunter first so it behaves like an escape Blink.
-                float const away = std::atan2(prey->GetPositionY() - player->GetPositionY(),
+                // Blink is an escape, but a ranged prey must not blink itself out
+                // of its own encounter leash. Predict a normal ~20-yard Blink;
+                // if "away from hunter" would cross the soft arena boundary,
+                // face back toward the encounter origin instead.
+                Position const& home = prey->GetHomePosition();
+                float away = std::atan2(prey->GetPositionY() - player->GetPositionY(),
                     prey->GetPositionX() - player->GetPositionX());
+                float const predictedX = prey->GetPositionX() + std::cos(away) * 20.0f;
+                float const predictedY = prey->GetPositionY() + std::sin(away) * 20.0f;
+                float const homeDx = predictedX - home.GetPositionX();
+                float const homeDy = predictedY - home.GetPositionY();
+                if ((homeDx * homeDx + homeDy * homeDy) > (_rangedArenaRadius * _rangedArenaRadius))
+                    away = std::atan2(home.GetPositionY() - prey->GetPositionY(),
+                        home.GetPositionX() - prey->GetPositionX());
+
                 prey->SetFacingTo(away);
                 prey->CastSpell(prey, ability.SpellId, true);
             }
@@ -2820,9 +2833,29 @@ void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creat
     reaction = _rangedReactionMs;
 
     // Ranged/kiting archetype: roots and slows are opportunities to create
-    // space. Do not stand beside a controlled hunter and trade white swings.
+    // space, but the prey must kite around its encounter origin instead of
+    // continuously backing itself into AzerothCore's evade/reset distance.
     if (hunt->CombatStyle == 1 && hunt->PreferredRange > 0.0f)
     {
+        Position const& home = prey->GetHomePosition();
+        float const homeDxNow = prey->GetPositionX() - home.GetPositionX();
+        float const homeDyNow = prey->GetPositionY() - home.GetPositionY();
+        float const homeDistance = std::sqrt(homeDxNow * homeDxNow + homeDyNow * homeDyNow);
+        float const softRadius = _rangedArenaRadius;
+        float const returnRadius = softRadius * 0.85f;
+
+        // If Blink or pathing places the prey near/outside the edge, recovering
+        // toward the center takes priority over further kiting. Keep combat live;
+        // this is repositioning, not an evade/reset.
+        if (homeDistance > returnRadius)
+        {
+            float x = home.GetPositionX();
+            float y = home.GetPositionY();
+            float z = home.GetPositionZ();
+            prey->GetMotionMaster()->MovePoint(0, x, y, z);
+            return;
+        }
+
         float const distance = prey->GetDistance(player);
         bool const hunterControlled = player->HasAuraType(SPELL_AURA_MOD_ROOT) ||
             player->HasAuraType(SPELL_AURA_MOD_DECREASE_SPEED);
@@ -2845,6 +2878,20 @@ void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creat
             dy /= len;
             float x = player->GetPositionX() + dx * retreatGoal;
             float y = player->GetPositionY() + dy * retreatGoal;
+
+            // Clamp the retreat destination to the encounter arena. This keeps
+            // Nova/Cone/Blink useful without letting repeated escapes walk the
+            // creature far enough from home to trigger a stock evade heal.
+            float fromHomeX = x - home.GetPositionX();
+            float fromHomeY = y - home.GetPositionY();
+            float fromHomeLen = std::sqrt(fromHomeX * fromHomeX + fromHomeY * fromHomeY);
+            if (fromHomeLen > returnRadius && fromHomeLen > 0.1f)
+            {
+                float const scale = returnRadius / fromHomeLen;
+                x = home.GetPositionX() + fromHomeX * scale;
+                y = home.GetPositionY() + fromHomeY * scale;
+            }
+
             float z = prey->GetPositionZ();
             if (Map* map = prey->GetMap())
             {
@@ -2853,6 +2900,17 @@ void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creat
                     z = groundZ + 0.5f;
             }
             prey->GetMotionMaster()->MovePoint(0, x, y, z);
+            return;
+        }
+
+        // Do not chase a hunter farther outward once the prey is already near
+        // the arena edge. Re-center first, then resume ranged spacing.
+        float const playerHomeDx = player->GetPositionX() - home.GetPositionX();
+        float const playerHomeDy = player->GetPositionY() - home.GetPositionY();
+        float const playerHomeDistance = std::sqrt(playerHomeDx * playerHomeDx + playerHomeDy * playerHomeDy);
+        if (playerHomeDistance > softRadius && homeDistance > softRadius * 0.65f)
+        {
+            prey->GetMotionMaster()->MovePoint(0, home.GetPositionX(), home.GetPositionY(), home.GetPositionZ());
             return;
         }
 
