@@ -1008,8 +1008,11 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     // progressively suppress high-quality rewards without removing item rewards.
     uint32 qualityRoll = urand(1, 1000);
     uint32 desiredQuality = ITEM_QUALITY_UNCOMMON;
-    if (eliteHunt)
-        desiredQuality = qualityRoll <= 100 ? ITEM_QUALITY_EPIC : ITEM_QUALITY_RARE; // 10% epic, otherwise guaranteed blue
+    bool const levelCapElite = eliteHunt && level >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+    if (levelCapElite)
+        desiredQuality = ITEM_QUALITY_EPIC; // level-cap Elite: entry 10-player raid gear (ilvl 200)
+    else if (eliteHunt)
+        desiredQuality = ITEM_QUALITY_RARE; // leveling Elite: strong level-appropriate gear, never raid-tier epics
     else if (dailyCompletedBefore == 0)
         desiredQuality = qualityRoll <= 10 ? ITEM_QUALITY_EPIC : (qualityRoll <= 200 ? ITEM_QUALITY_RARE : ITEM_QUALITY_UNCOMMON);
     else if (dailyCompletedBefore == 1)
@@ -1047,6 +1050,13 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
             continue;
         if (itemTemplate.RequiredLevel > level || itemTemplate.RequiredLevel < minRequiredLevel)
             continue;
+
+        // At level cap an Elite Hunt's immediate equipment reward is deliberately
+        // limited to entry-level 10-player Wrath raid gear. Higher progression
+        // comes from saved Huntmaster's Seals rather than jackpot RNG.
+        if (levelCapElite && itemTemplate.ItemLevel != 200)
+            continue;
+
         if (player->CanUseItem(&itemTemplate) != EQUIP_ERR_OK)
             continue;
 
@@ -1106,13 +1116,13 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     }
 
     std::ostringstream statsSql;
-    statsSql << "INSERT INTO `hunt_stats` (`guid`,`total_completed`,`daily_completed`,`daily_reset_date`,`greens_received`,`blues_received`,`epics_received`,`elite_total_completed`,`elite_daily_completed`,`elite_daily_reset_date`,`last_completed_at`) "
+    statsSql << "INSERT INTO `hunt_stats` (`guid`,`total_completed`,`daily_completed`,`daily_reset_date`,`greens_received`,`blues_received`,`epics_received`,`elite_total_completed`,`elite_daily_completed`,`elite_daily_reset_date`,`huntmaster_seals`,`last_completed_at`) "
              << "VALUES (" << r.CharacterGuid << ",1,1,CURRENT_DATE(),"
              << (qualityColumn && std::string(qualityColumn)=="greens_received" ? 1 : 0) << ","
              << (qualityColumn && std::string(qualityColumn)=="blues_received" ? 1 : 0) << ","
              << (qualityColumn && std::string(qualityColumn)=="epics_received" ? 1 : 0) << ","
              << (eliteHunt ? 1 : 0) << "," << (eliteHunt ? 1 : 0) << ","
-             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << ",CURRENT_TIMESTAMP()) "
+             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << (levelCapElite ? 1 : 0) << ",CURRENT_TIMESTAMP()) "
              << "ON DUPLICATE KEY UPDATE `total_completed`=`total_completed`+1, "
              << "`daily_completed`=IF(`daily_reset_date`=CURRENT_DATE(),`daily_completed`+1,1), "
              << "`daily_reset_date`=CURRENT_DATE(),";
@@ -1120,6 +1130,8 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         statsSql << "`elite_total_completed`=`elite_total_completed`+1,"
                  << "`elite_daily_completed`=IF(`elite_daily_reset_date`=CURRENT_DATE(),`elite_daily_completed`+1,1),"
                  << "`elite_daily_reset_date`=CURRENT_DATE(),";
+    if (levelCapElite)
+        statsSql << "`huntmaster_seals`=`huntmaster_seals`+1,";
     if (qualityColumn)
         statsSql << "`" << qualityColumn << "`=`" << qualityColumn << "`+1,";
     statsSql << "`last_completed_at`=CURRENT_TIMESTAMP()";
@@ -1138,6 +1150,14 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         rewardMessage << ". No suitable item reward was found for this level/quality roll";
     else
         rewardMessage << ". Your bags were too full for the item reward";
+    if (levelCapElite)
+    {
+        uint32 sealBalance = 1;
+        if (QueryResult seals = CharacterDatabase.Query(
+            "SELECT `huntmaster_seals` FROM `hunt_stats` WHERE `guid`={}", r.CharacterGuid))
+            sealBalance = seals->Fetch()[0].Get<uint32>();
+        rewardMessage << ", and 1 Huntmaster's Seal (" << sealBalance << " total)";
+    }
     rewardMessage << ".";
 
     DeleteRuntime(r.CharacterGuid); message=rewardMessage.str(); return true;
@@ -2472,14 +2492,17 @@ std::string HuntManager::BuildStats(Player const* player) const
     if (!player) return "No hunting record is available.";
     uint32 guid = player->GetGUID().GetCounter();
     QueryResult result = CharacterDatabase.Query(
-        "SELECT `total_completed`,IF(`daily_reset_date`=CURRENT_DATE,`daily_completed`,0),`greens_received`,`blues_received`,`epics_received` "
+        "SELECT `total_completed`,IF(`daily_reset_date`=CURRENT_DATE,`daily_completed`,0),`greens_received`,`blues_received`,`epics_received`,`huntmaster_seals`,`elite_total_completed` "
         "FROM `hunt_stats` WHERE `guid`={}", guid);
     if (!result) return "Hunting Record: 0 completed hunts. No rewards recorded yet.";
     Field* f = result->Fetch();
     std::ostringstream out;
     out << "Hunting Record: " << f[0].Get<uint32>() << " total | " << f[1].Get<uint32>() << " today"
         << " | green rewards " << f[2].Get<uint32>() << " | blue rewards " << f[3].Get<uint32>()
-        << " | epic rewards " << f[4].Get<uint32>();
+        << " | epic rewards " << f[4].Get<uint32>()
+        << " | Elite Hunts " << f[6].Get<uint32>();
+    if (player->GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+        out << " | Huntmaster's Seals " << f[5].Get<uint32>();
     return out.str();
 }
 
