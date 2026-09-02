@@ -622,6 +622,7 @@ void HuntManager::Reset()
     _preyAbilities.clear();
     _abilityTimers.clear();
     _abilityUsed.clear();
+    _movementReactionTimers.clear();
     _zones.clear();
     _finalLocations.clear();
     _giverEntries.clear();
@@ -639,6 +640,7 @@ void HuntManager::LoadDefinitions()
     _preyAbilities.clear();
     _abilityTimers.clear();
     _abilityUsed.clear();
+    _movementReactionTimers.clear();
     _zones.clear();
     _finalLocations.clear();
     _giverEntries.clear();
@@ -890,6 +892,7 @@ void HuntManager::DeleteRuntime(uint32 guid)
 {
     CharacterDatabase.Execute("DELETE FROM `hunt_runtime` WHERE `guid`={}", guid);
     _abilityTimers.erase(guid);
+    _movementReactionTimers.erase(guid);
     _runtimes.erase(guid);
 }
 
@@ -1106,6 +1109,14 @@ void HuntManager::ConfigureEliteRewardTargeting(bool requireUpgrade, float upgra
 {
     _eliteRewardRequireUpgrade = requireUpgrade;
     _eliteRewardUpgradePoolPct = std::max(0.0f, std::min(1.0f, upgradePoolPct));
+}
+
+void HuntManager::ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs)
+{
+    _rangedPanicRange = std::max(3.0f, rangedPanicRange);
+    _rangedRetreatRangePct = std::max(0.50f, rangedRetreatRangePct);
+    _rangedBlinkCooldownMs = std::max<uint32>(5000, rangedBlinkCooldownMs);
+    _rangedReactionMs = std::max<uint32>(100, rangedReactionMs);
 }
 
 void HuntManager::ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel)
@@ -2655,6 +2666,7 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
 
     r.ActivePreyGuid=prey->GetGUID(); r.ActivePreyFinal=finalEncounter;
     InitializeAbilityTimers(r, finalEncounter);
+    _movementReactionTimers[r.CharacterGuid] = _rangedReactionMs;
     if(!finalEncounter){r.AmbushesCompleted++; SaveRuntime(r); ChatHandler(player->GetSession()).PSendSysMessage("|cffff8000[Hunts]|r {} has found YOU! Drive it off!",h->Name);}
     else ChatHandler(player->GetSession()).PSendSysMessage("|cffff0000[Hunts]|r {} emerges for the final confrontation!",h->Name);
     prey->AI()->AttackStart(player);
@@ -2712,7 +2724,10 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
             return;
     }
 
+    HuntDefinition const* hunt = GetDefinition(runtime.PreyId);
     uint8 const encounterBit = runtime.ActivePreyFinal ? 2 : 1;
+    float const distance = prey->GetDistance(player);
+
     for (HuntPreyAbilityDefinition const& ability : abilityIt->second)
     {
         if (!ability.Enabled || !(ability.EncounterMask & encounterBit) || !ability.SpellId)
@@ -2722,34 +2737,136 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
             continue;
         if (ability.OncePerEncounter && _abilityUsed[runtime.CharacterGuid][ability.Id])
             continue;
-        if (ability.HealthBelowPct && prey->GetHealthPct() > ability.HealthBelowPct)
-            continue;
-        if (ability.VictimHealthBelowPct && player->GetHealthPct() > ability.VictimHealthBelowPct)
-            continue;
-        if (ability.RequireMelee && !prey->IsWithinMeleeRange(player))
-            continue;
-        Unit* target = ability.Target == 1 ? static_cast<Unit*>(prey) : static_cast<Unit*>(player);
-        if (ability.RequireAuraMissing && target->HasAura(ability.SpellId))
-            continue;
 
+        // Cooldowns advance with combat time even while their tactical condition
+        // is not currently true. Once ready, the ability waits for a valid
+        // opportunity instead of effectively extending its cooldown.
         uint32& timer = timerOwner->second[ability.Id];
         if (timer > elapsedMs)
         {
             timer -= elapsedMs;
             continue;
         }
+        timer = 0;
+
+        if (ability.HealthBelowPct && prey->GetHealthPct() > ability.HealthBelowPct)
+            continue;
+        if (ability.VictimHealthBelowPct && player->GetHealthPct() > ability.VictimHealthBelowPct)
+            continue;
+        if (ability.RequireMelee && !prey->IsWithinMeleeRange(player))
+            continue;
+
+        // Gap closers and escape tools are tactical abilities, not random rotation
+        // buttons. Charge is only attempted at legal charge distance. Blink is held
+        // until a ranged archetype is actually being pressured in close quarters.
+        bool const isCharge = ability.SpellId == 11578;
+        bool const isBlink = ability.SpellId == 1953;
+        if (isCharge && (distance < 8.0f || distance > 25.0f))
+            continue;
+        if (isBlink && (!hunt || hunt->CombatStyle != 1 || distance > _rangedPanicRange))
+            continue;
+
+        Unit* target = ability.Target == 1 ? static_cast<Unit*>(prey) : static_cast<Unit*>(player);
+        if (ability.RequireAuraMissing && target->HasAura(ability.SpellId))
+            continue;
 
         if (ability.ChancePct >= 100 || urand(1, 100) <= ability.ChancePct)
         {
-            prey->CastSpell(target, ability.SpellId, false);
+            if (isBlink)
+            {
+                // Blink travels in the caster's facing direction. Face directly
+                // away from the hunter first so it behaves like an escape Blink.
+                float const away = std::atan2(prey->GetPositionY() - player->GetPositionY(),
+                    prey->GetPositionX() - player->GetPositionX());
+                prey->SetFacingTo(away);
+                prey->CastSpell(prey, ability.SpellId, true);
+            }
+            else
+            {
+                // Warrior player abilities depend on rage/stance state that a
+                // creature shell does not naturally maintain. Their Hunt AI owns
+                // cooldowns, so trigger them to make the authored kit reliable.
+                bool const warriorTechnique = runtime.PreyId == 102;
+                prey->CastSpell(target, ability.SpellId, warriorTechnique);
+            }
+
             if (ability.OncePerEncounter)
                 _abilityUsed[runtime.CharacterGuid][ability.Id] = true;
         }
 
-        uint32 const minMs = std::min(ability.CooldownMinMs, ability.CooldownMaxMs);
-        uint32 const maxMs = std::max(ability.CooldownMinMs, ability.CooldownMaxMs);
+        uint32 minMs = std::min(ability.CooldownMinMs, ability.CooldownMaxMs);
+        uint32 maxMs = std::max(ability.CooldownMinMs, ability.CooldownMaxMs);
+        if (isBlink)
+            minMs = maxMs = _rangedBlinkCooldownMs;
         timer = minMs == maxMs ? minMs : urand(minMs, maxMs);
     }
+}
+
+void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creature* prey, uint32 elapsedMs)
+{
+    if (!player || !prey || !prey->IsAlive() || !prey->IsInCombat())
+        return;
+
+    HuntDefinition const* hunt = GetDefinition(runtime.PreyId);
+    if (!hunt)
+        return;
+
+    uint32& reaction = _movementReactionTimers[runtime.CharacterGuid];
+    if (reaction > elapsedMs)
+    {
+        reaction -= elapsedMs;
+        return;
+    }
+    reaction = _rangedReactionMs;
+
+    // Ranged/kiting archetype: roots and slows are opportunities to create
+    // space. Do not stand beside a controlled hunter and trade white swings.
+    if (hunt->CombatStyle == 1 && hunt->PreferredRange > 0.0f)
+    {
+        float const distance = prey->GetDistance(player);
+        bool const hunterControlled = player->HasAuraType(SPELL_AURA_MOD_ROOT) ||
+            player->HasAuraType(SPELL_AURA_MOD_DECREASE_SPEED);
+        float const retreatGoal = std::max(_rangedPanicRange + 2.0f,
+            hunt->PreferredRange * _rangedRetreatRangePct);
+
+        if ((hunterControlled && distance < retreatGoal) || distance < (_rangedPanicRange * 0.65f))
+        {
+            float dx = prey->GetPositionX() - player->GetPositionX();
+            float dy = prey->GetPositionY() - player->GetPositionY();
+            float len = std::sqrt(dx * dx + dy * dy);
+            if (len < 0.1f)
+            {
+                dx = std::cos(prey->GetOrientation());
+                dy = std::sin(prey->GetOrientation());
+                len = 1.0f;
+            }
+
+            dx /= len;
+            dy /= len;
+            float x = player->GetPositionX() + dx * retreatGoal;
+            float y = player->GetPositionY() + dy * retreatGoal;
+            float z = prey->GetPositionZ();
+            if (Map* map = prey->GetMap())
+            {
+                float groundZ = map->GetHeight(x, y, z + 10.0f, true, 50.0f);
+                if (groundZ > INVALID_HEIGHT)
+                    z = groundZ + 0.5f;
+            }
+            prey->GetMotionMaster()->MovePoint(0, x, y, z);
+            return;
+        }
+
+        float const minRange = std::max(5.0f, hunt->PreferredRange * 0.70f);
+        float const maxRange = std::max(minRange + 2.0f, hunt->PreferredRange * 1.10f);
+        prey->GetMotionMaster()->MoveChase(player, ChaseRange(minRange, maxRange));
+        return;
+    }
+
+    // Headsman: separation is a problem to solve, never a reason to loiter.
+    // Charge itself is prioritized in UpdatePreyAbilities; ordinary chase is
+    // the fallback outside charge range or while Charge is cooling down.
+    if (runtime.PreyId == 102 && !prey->IsWithinMeleeRange(player))
+        prey->GetMotionMaster()->MoveChase(player);
 }
 
 bool HuntManager::SendFinalLocationPoi(Player* player, HuntRuntime const& r) const
@@ -2898,6 +3015,7 @@ void HuntManager::Update(uint32 diff)
         }
 
         HuntDefinition const* h=GetDefinition(r.PreyId); if(!h) continue;
+        UpdatePreyMovement(p, r, prey, 250);
         UpdatePreyAbilities(p, r, prey, 250);
 
         if(!r.ActivePreyFinal && prey->GetHealthPct()<=h->EscapeHealthPct)

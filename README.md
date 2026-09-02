@@ -82,3 +82,10 @@ The prey ability system now supports a hunter/victim-health threshold in additio
 ### SQL maintenance convention
 
 Canonical base SQL contains the complete current schema. Prebuilt content SQL contains only content/data and must not alter table structure. Schema changes for an already-running development install belong in clearly named files under `data/sql/db-world/updates/`. Elite prey content is kept together in `prebuilt/911_elite_prey.sql`; do not create one numbered prebuilt file per Elite archetype unless the content truly belongs to a separate subsystem.
+
+
+## 1.0.6-dev - Elite combat brains: kiting and melee pressure
+
+The Winterborn now has an actual ranged combat brain rather than only a Frost Mage spell list. When Frost Nova or a movement slow controls the hunter, the ranged archetype uses that control window to retreat toward its authored preferred range. At panic distance it can use Blink as a deliberate escape tool; Blink faces away from the hunter first and defaults to the Wrath 15-second cooldown. After defensive pauses such as Ice Block, movement is reevaluated and ranged spacing resumes instead of standing in melee. Global panic range, retreat percentage, Blink cooldown, and reaction timing are configurable under `Hunts.Elite.Ranged.*`.
+
+The Headsman now treats distance as a tactical problem. Charge is reserved for legal Charge range instead of being wasted at point-blank or excessive distance, while normal chase remains the fallback. Warrior techniques are executed through the Hunt AI rather than depending on creature-shell rage/stance state, making Mortal Strike, Hamstring, Rend, Whirlwind, Intimidating Shout, and Execute reliable. Hamstring and Rend are aura-aware so they are maintained instead of blindly spammed.

@@ -58,6 +58,7 @@ INSERT INTO `hunt_prey_ability`
   `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
 (101001,101,42842,0,1000,2500,2500,4000,100,3,10,80,0,0,0,0,0,1,'Frostbolt - primary ranged pressure'),
 (101002,101,42917,0,3500,6000,18000,24000,100,3,10,80,0,0,0,0,0,1,'Frost Nova - create distance'),
+(101006,101,1953,1,1500,3000,15000,15000,100,3,20,80,0,0,0,0,0,1,'Blink - escape when pressured inside panic range'),
 (101003,101,43039,1,500,1500,24000,32000,100,3,20,80,0,0,0,0,1,1,'Ice Barrier - keep defensive shield available'),
 (101004,101,42931,0,6000,9000,10000,14000,75,2,30,80,0,0,0,0,0,1,'Cone of Cold - final close-range punishment'),
 (101005,101,45438,1,0,0,60000,60000,100,2,50,80,25,0,0,1,0,1,'Ice Block below 25% - once per final');
@@ -85,7 +86,9 @@ INSERT INTO `hunt_prey_ability`
   `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
   `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
 (102001,102,11578,0,0,1200,14000,18000,100,3,10,80,0,0,0,0,0,1,'Charge - close distance'),
-(102002,102,25212,0,2500,4500,9000,12000,85,3,10,80,0,0,1,0,0,1,'Hamstring - hold the hunter in melee'),
-(102003,102,47486,0,3500,5500,6000,8500,100,3,20,80,0,0,1,0,0,1,'Mortal Strike - primary Arms pressure'),
+(102002,102,25212,0,1000,2200,8000,10000,100,3,10,80,0,0,1,0,1,1,'Hamstring - hold the hunter in melee'),
+(102006,102,47465,0,1800,3200,12000,15000,100,3,10,80,0,0,1,0,1,1,'Rend - maintain a visible bleed'),
+(102003,102,47486,0,2500,4000,6000,8000,100,3,20,80,0,0,1,0,0,1,'Mortal Strike - primary Arms pressure'),
+(102007,102,1680,1,4500,6500,9000,12000,100,3,20,80,0,0,1,0,0,1,'Whirlwind - unmistakable heavy melee pressure'),
 (102004,102,5246,0,8000,12000,28000,36000,70,2,30,80,0,0,1,0,0,1,'Intimidating Shout - final control'),
 (102005,102,47471,0,0,0,5000,7000,100,2,40,80,0,20,1,0,0,1,'Execute - finisher when the hunter is below 20%');

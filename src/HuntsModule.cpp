@@ -37,6 +37,10 @@ enum class HuntsConfig
     EliteEndgameRewardMaxItemLevel,
     EliteRewardRequireUpgrade,
     EliteRewardUpgradePoolPct,
+    EliteRangedPanicRange,
+    EliteRangedRetreatRangePct,
+    EliteRangedBlinkCooldownMs,
+    EliteRangedReactionMs,
     SealStoreTier1Cost,
     SealStoreTier1MinItemLevel,
     SealStoreTier1MaxItemLevel,
@@ -81,6 +85,10 @@ public:
         SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMaxItemLevel, "Hunts.Elite.EndgameRewardMaxItemLevel", 200);
         SetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade, "Hunts.Elite.RewardRequireUpgrade", true);
         SetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct, "Hunts.Elite.RewardUpgradePoolPct", 0.70f);
+        SetConfigValue<float>(HuntsConfig::EliteRangedPanicRange, "Hunts.Elite.Ranged.PanicRange", 10.0f);
+        SetConfigValue<float>(HuntsConfig::EliteRangedRetreatRangePct, "Hunts.Elite.Ranged.RetreatRangePct", 1.0f);
+        SetConfigValue<uint32>(HuntsConfig::EliteRangedBlinkCooldownMs, "Hunts.Elite.Ranged.BlinkCooldownMs", 15000);
+        SetConfigValue<uint32>(HuntsConfig::EliteRangedReactionMs, "Hunts.Elite.Ranged.ReactionMs", 500);
         SetConfigValue<uint32>(HuntsConfig::SealStoreTier1Cost, "Hunts.SealStore.Tier1.Cost", 5);
         SetConfigValue<uint32>(HuntsConfig::SealStoreTier1MinItemLevel, "Hunts.SealStore.Tier1.MinItemLevel", 213);
         SetConfigValue<uint32>(HuntsConfig::SealStoreTier1MaxItemLevel, "Hunts.SealStore.Tier1.MaxItemLevel", 219);
@@ -153,6 +161,11 @@ public:
         sHuntMgr.ConfigureEliteRewardTargeting(
             huntsConfig.GetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade),
             huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct));
+        sHuntMgr.ConfigureEliteCombat(
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedPanicRange),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedRetreatRangePct),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteRangedBlinkCooldownMs),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteRangedReactionMs));
         sHuntMgr.ConfigureSealStoreTier(1,
             huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1Cost),
             huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1MinItemLevel),
