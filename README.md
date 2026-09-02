@@ -95,3 +95,15 @@ The Headsman now treats distance as a tactical problem. Charge is reserved for l
 Ranged Elite prey now treat their summon/home position as an encounter arena rather than endlessly kiting away from it. Retreat destinations are clamped to a configurable soft radius (`Hunts.Elite.Ranged.ArenaRadius`, default 35 yards), and a ranged prey approaching the boundary prioritizes re-centering while remaining in combat. This prevents repeated Frost Nova/Cone of Cold retreats from pushing The Winterborn far enough from its spawn point to trigger AzerothCore's normal evade/reset heal.
 
 Blink uses the same arena awareness: it still prefers to face away from the hunter, but if the projected Blink would cross the encounter boundary it faces back toward the arena instead. This keeps the Frost Mage escape behavior without letting the prey evade-bug itself.
+
+
+## 1.0.8-dev - Required ambush completion, bound Elite progression, and two new archetypes
+
+Ambushes are now persistent required Hunt stages rather than spawn-time milestones. Crossing an ambush threshold writes an `ambush_pending` flag to the character runtime and pauses further tracking progress. The ambush is only counted after the prey is actually driven to its configured escape-health threshold. If the prey evades/despawns, the player logs out, or the server restarts mid-ambush, the pending encounter remains and respawns when the hunter is back in the assigned hunt zone. A restart therefore cannot turn a 48% tracking state into a free skipped ambush. Existing installations must run `data/sql/db-characters/updates/1.0.8_ambush_completion_gate_upgrade.sql`; fresh installs already have the column in the canonical character base schema.
+
+Binding policy is now explicit. Normal Hunt item rewards preserve the original Blizzard item template's binding behavior. Level-cap Elite immediate equipment rewards are forcibly soulbound when awarded, and all Huntmaster's Seal-store purchases are forcibly soulbound, preventing the personal Elite progression loop from becoming a source of tradable raid-level gear.
+
+Two additional class-style Elite prey join the roster in the existing canonical `prebuilt/911_elite_prey.sql` file:
+
+- **The Veiled Knife** - Rogue archetype using fast melee pressure, Rupture, Gouge, Evasion, Kidney Shot, and low-health Eviscerate burst. Rogue resource/combo-driven techniques are triggered by the Hunt AI so a creature shell does not depend on player-only energy/combo-point state.
+- **The Ashen Pact** - Warlock archetype maintaining ranged pressure with Shadow Bolt, Corruption, Curse of Agony, Fear, Immolate, Drain Life, and a low-health Death Coil. It shares the reusable ranged-spacing brain but has no Frost-Mage Blink/root behavior.

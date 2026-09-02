@@ -155,6 +155,7 @@ struct HuntRuntime
     uint32 FinalLocationId = 0;
     uint8 TrackingProgress = 0;
     uint8 AmbushesCompleted = 0;
+    bool AmbushPending = false;
     HuntState State = HuntState::None;
     ObjectGuid ActivePreyGuid;
     bool ActivePreyFinal = false;

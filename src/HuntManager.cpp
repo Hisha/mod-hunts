@@ -861,12 +861,12 @@ void HuntManager::Initialize()
 void HuntManager::LoadRuntimes()
 {
     _runtimes.clear();
-    if (QueryResult result = CharacterDatabase.Query("SELECT `guid`,`prey_id`,`giver_entry`,`giver_spawn_id`,`zone_id`,`final_location_id`,`tracking_progress`,`ambushes_completed`,`state` FROM `hunt_runtime`"))
+    if (QueryResult result = CharacterDatabase.Query("SELECT `guid`,`prey_id`,`giver_entry`,`giver_spawn_id`,`zone_id`,`final_location_id`,`tracking_progress`,`ambushes_completed`,`ambush_pending`,`state` FROM `hunt_runtime`"))
     {
         do
         {
             Field* f=result->Fetch(); HuntRuntime r;
-            r.CharacterGuid=f[0].Get<uint32>(); r.PreyId=f[1].Get<uint32>(); r.GiverEntry=f[2].Get<uint32>(); r.GiverSpawnId=f[3].Get<uint32>(); r.ZoneId=f[4].Get<uint32>(); r.FinalLocationId=f[5].Get<uint32>(); r.TrackingProgress=f[6].Get<uint8>(); r.AmbushesCompleted=f[7].Get<uint8>(); r.State=static_cast<HuntState>(f[8].Get<uint8>());
+            r.CharacterGuid=f[0].Get<uint32>(); r.PreyId=f[1].Get<uint32>(); r.GiverEntry=f[2].Get<uint32>(); r.GiverSpawnId=f[3].Get<uint32>(); r.ZoneId=f[4].Get<uint32>(); r.FinalLocationId=f[5].Get<uint32>(); r.TrackingProgress=f[6].Get<uint8>(); r.AmbushesCompleted=f[7].Get<uint8>(); r.AmbushPending=f[8].Get<uint8>()!=0; r.State=static_cast<HuntState>(f[9].Get<uint8>());
             _runtimes[r.CharacterGuid]=r;
         } while(result->NextRow());
     }
@@ -881,10 +881,10 @@ void HuntManager::SaveRuntime(HuntRuntime const& r)
     // memory has already advanced to FinalLocated).
     std::ostringstream sql;
     sql << "REPLACE INTO `hunt_runtime` "
-        << "(`guid`,`prey_id`,`giver_entry`,`giver_spawn_id`,`zone_id`,`final_location_id`,`tracking_progress`,`ambushes_completed`,`state`) VALUES ("
+        << "(`guid`,`prey_id`,`giver_entry`,`giver_spawn_id`,`zone_id`,`final_location_id`,`tracking_progress`,`ambushes_completed`,`ambush_pending`,`state`) VALUES ("
         << r.CharacterGuid << ',' << r.PreyId << ',' << r.GiverEntry << ',' << r.GiverSpawnId << ','
         << r.ZoneId << ',' << r.FinalLocationId << ',' << uint32(r.TrackingProgress) << ','
-        << uint32(r.AmbushesCompleted) << ',' << static_cast<uint32>(r.State) << ')';
+        << uint32(r.AmbushesCompleted) << ',' << (r.AmbushPending ? 1 : 0) << ',' << static_cast<uint32>(r.State) << ')';
     CharacterDatabase.DirectExecute(sql.str().c_str());
 }
 
@@ -1273,6 +1273,9 @@ bool HuntManager::PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier,
 
     if (Item* item = player->StoreNewItem(dest, itemId, true))
     {
+        // Seal-store equipment is personal progression. Bind the awarded item
+        // instance even when the original Blizzard template happens to be BoE.
+        item->SetBinding(true);
         player->SendNewItem(item, 1, true, false);
         ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId);
         uint32 const remaining = GetSealBalance(player);
@@ -1494,7 +1497,13 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         if (storeResult == EQUIP_ERR_OK)
         {
             if (Item* item = player->StoreNewItem(dest, rewardedItemId, true))
+            {
+                // Level-cap Elite gear is personal Hunt progression. Normal
+                // Hunt rewards retain their stock Blizzard binding behavior.
+                if (levelCapElite)
+                    item->SetBinding(true);
                 player->SendNewItem(item, 1, true, false);
+            }
             else
                 rewardedItemId = 0;
         }
@@ -1741,6 +1750,11 @@ bool HuntManager::AddProgress(Player* player, uint8 amount, std::string& message
     auto it=_runtimes.find(player->GetGUID().GetCounter()); if(it==_runtimes.end()){message="You have no active hunt.";return false;}
     HuntRuntime& r=it->second; if(r.State!=HuntState::Tracking){message="Tracking is already complete.";return false;}
     HuntDefinition const* h=GetDefinition(r.PreyId); if(!h){message="Hunt definition is missing.";return false;}
+    if (r.AmbushPending)
+    {
+        message = "Your quarry is already on you. Drive off the current ambush before tracking can continue.";
+        return false;
+    }
     uint8 old=r.TrackingProgress; r.TrackingProgress=static_cast<uint8>(std::min<uint32>(100, r.TrackingProgress+amount));
     uint8 threshold=GetNextAmbushThreshold(r,*h);
     if(r.TrackingProgress>=100)
@@ -1759,6 +1773,11 @@ bool HuntManager::AddProgress(Player* player, uint8 amount, std::string& message
     SaveRuntime(r);
     if(old<threshold && r.TrackingProgress>=threshold && r.AmbushesCompleted<h->AmbushCount)
     {
+        // Crossing an ambush threshold creates a persistent required encounter.
+        // Completion is recorded only after the prey is actually driven to its
+        // escape-health threshold; logout/restart/evade cannot skip the fight.
+        r.AmbushPending = true;
+        SaveRuntime(r);
         std::string ambush; SpawnPrey(player,r,false,ambush); message=ambush; return true;
     }
     message="Tracking progress: "+std::to_string(r.TrackingProgress)+"%."; return true;
@@ -2669,7 +2688,7 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
     r.ActivePreyGuid=prey->GetGUID(); r.ActivePreyFinal=finalEncounter;
     InitializeAbilityTimers(r, finalEncounter);
     _movementReactionTimers[r.CharacterGuid] = _rangedReactionMs;
-    if(!finalEncounter){r.AmbushesCompleted++; SaveRuntime(r); ChatHandler(player->GetSession()).PSendSysMessage("|cffff8000[Hunts]|r {} has found YOU! Drive it off!",h->Name);}
+    if(!finalEncounter){SaveRuntime(r); ChatHandler(player->GetSession()).PSendSysMessage("|cffff8000[Hunts]|r {} has found YOU! Drive it off!",h->Name);}
     else ChatHandler(player->GetSession()).PSendSysMessage("|cffff0000[Hunts]|r {} emerges for the final confrontation!",h->Name);
     prey->AI()->AttackStart(player);
 
@@ -2796,11 +2815,12 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
             }
             else
             {
-                // Warrior player abilities depend on rage/stance state that a
-                // creature shell does not naturally maintain. Their Hunt AI owns
-                // cooldowns, so trigger them to make the authored kit reliable.
-                bool const warriorTechnique = runtime.PreyId == 102;
-                prey->CastSpell(target, ability.SpellId, warriorTechnique);
+                // Warrior/Rogue player abilities depend on rage/energy/stance or
+                // combo-point state that a creature shell does not naturally
+                // maintain. Hunt AI owns their cooldowns, so trigger those melee
+                // techniques to make the authored class kit reliable.
+                bool const resourceDrivenMeleeTechnique = runtime.PreyId == 102 || runtime.PreyId == 103;
+                prey->CastSpell(target, ability.SpellId, resourceDrivenMeleeTechnique);
             }
 
             if (ability.OncePerEncounter)
@@ -2988,7 +3008,16 @@ bool HuntManager::LocateFinal(Player* player, HuntRuntime& r)
 
 bool HuntManager::ForceAmbush(Player* player, std::string& message)
 {
-    if(!player){message="Player required.";return false;} auto it=_runtimes.find(player->GetGUID().GetCounter()); if(it==_runtimes.end()){message="No active hunt.";return false;} return SpawnPrey(player,it->second,false,message);
+    if(!player){message="Player required.";return false;}
+    auto it=_runtimes.find(player->GetGUID().GetCounter());
+    if(it==_runtimes.end()){message="No active hunt.";return false;}
+    HuntRuntime& r = it->second;
+    if (!r.AmbushPending)
+    {
+        r.AmbushPending = true;
+        SaveRuntime(r);
+    }
+    return SpawnPrey(player,r,false,message);
 }
 
 bool HuntManager::ForceFinal(Player* player, std::string& message)
@@ -3021,6 +3050,16 @@ void HuntManager::Update(uint32 diff)
     for(auto& [guid,r]:_runtimes)
     {
         Player* p=ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(guid)); if(!p) continue;
+
+        // Ambushes are required encounters. If the server restarted, the player
+        // logged out, or the creature evaded/despawned before reaching its escape
+        // threshold, the persisted pending flag recreates that same ambush once
+        // the hunter is back in the assigned hunt zone. Tracking stays paused.
+        if (r.State == HuntState::Tracking && r.AmbushPending && r.ActivePreyGuid.IsEmpty() && p->GetZoneId() == r.ZoneId)
+        {
+            std::string ignored;
+            SpawnPrey(p, r, false, ignored);
+        }
 
         // TrackingProgress is the recovery source of truth. A hunt that has
         // reached 100% must either be ReadyToTurnIn or have a valid final site.
@@ -3082,7 +3121,14 @@ void HuntManager::Update(uint32 diff)
             ChatHandler(p->GetSession()).PSendSysMessage("|cffffff00[Hunts]|r {} breaks away and disappears. Continue tracking it.",h->Name);
             prey->DespawnOrUnsummon(Milliseconds(1500));
             _abilityTimers.erase(r.CharacterGuid);
-            r.ActivePreyGuid.Clear(); SaveRuntime(r);
+            r.ActivePreyGuid.Clear();
+            if (r.AmbushPending)
+            {
+                r.AmbushPending = false;
+                if (r.AmbushesCompleted < h->AmbushCount)
+                    ++r.AmbushesCompleted;
+            }
+            SaveRuntime(r);
         }
     }
 }

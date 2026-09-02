@@ -1,10 +1,10 @@
--- Hunts 1.0.5-dev - Elite Hunt prey roster
+-- Hunts 1.0.8-dev - Elite Hunt prey roster
 -- Canonical Elite prey content only. Schema changes belong in db-world/updates.
 SET @HUNT_ACTIVATOR_ENTRY := 14999010;
 
-DELETE FROM `hunt_prey_ability` WHERE `prey_id` IN (100,101,102);
-DELETE FROM `hunt_prey` WHERE `id` IN (100,101,102);
-DELETE FROM `hunt_creature_template` WHERE `id` IN (1016,1017,1018);
+DELETE FROM `hunt_prey_ability` WHERE `prey_id` IN (100,101,102,103,104);
+DELETE FROM `hunt_prey` WHERE `id` IN (100,101,102,103,104);
+DELETE FROM `hunt_creature_template` WHERE `id` IN (1016,1017,1018,1019,1020);
 
 -- ---------------------------------------------------------------------------
 -- The Oathbreaker - Retribution Paladin archetype
@@ -92,3 +92,65 @@ INSERT INTO `hunt_prey_ability`
 (102007,102,1680,1,4500,6500,9000,12000,100,3,20,80,0,0,1,0,0,1,'Whirlwind - unmistakable heavy melee pressure'),
 (102004,102,5246,0,8000,12000,28000,36000,70,2,30,80,0,0,1,0,0,1,'Intimidating Shout - final control'),
 (102005,102,47471,0,0,0,5000,7000,100,2,40,80,0,20,1,0,0,1,'Execute - finisher when the hunter is below 20%');
+
+
+-- ---------------------------------------------------------------------------
+-- The Veiled Knife - Subtlety/Assassination Rogue archetype
+-- Edwin VanCleef supplies a stock dual-wield humanoid shell. The Hunt AI
+-- triggers resource/combo-driven Rogue techniques so the creature does not
+-- depend on player-only energy/combo-point state.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1019,'Elite Hunt - The Veiled Knife',639,'The Veiled Knife','Blade in the Dark',14,1,0.95,0.90,1.16,1,
+ 'Elite Rogue-style prey; control, bleeds, avoidance, and burst define the encounter.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(103,'The Veiled Knife',10,80,0,1019,@HUNT_ACTIVATOR_ENTRY,4.75,7.75,2.5,2,0,0,50,2,1,
+ 'Elite Rogue archetype; fast melee control, persistent bleed pressure, Evasion, and finishing burst.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(103001,103,48638,0,900,1800,3500,5000,100,3,10,80,0,0,1,0,0,1,'Sinister Strike - basic melee pressure'),
+(103002,103,48672,0,1800,3200,11000,14000,100,3,20,80,0,0,1,0,1,1,'Rupture - maintain a bleed'),
+(103003,103,1776,0,4500,6500,18000,24000,80,3,20,80,0,0,1,0,0,1,'Gouge - short melee control'),
+(103004,103,26669,1,0,0,45000,45000,100,3,30,80,35,0,0,1,0,1,'Evasion below 35% - once per encounter'),
+(103005,103,8643,0,6500,9000,22000,28000,80,2,40,80,0,0,1,0,0,1,'Kidney Shot - final control'),
+(103006,103,48668,0,3500,5500,7000,9000,100,2,40,80,0,30,1,0,0,1,'Eviscerate - finishing burst when hunter is below 30%');
+
+-- ---------------------------------------------------------------------------
+-- The Ashen Pact - Affliction/Destruction Warlock archetype
+-- Grand Warlock Nethekurse supplies a stock demonic-caster shell. Combat style
+-- 1 keeps casting distance, but unlike Winterborn this prey controls space with
+-- fear and damage-over-time pressure instead of roots/Blink.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1020,'Elite Hunt - The Ashen Pact',16807,'The Ashen Pact','Bearer of the Black Covenant',14,1,1.00,0.90,1.10,1,
+ 'Elite Warlock-style prey; ranged curses, damage over time, fear, and life-draining pressure.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(104,'The Ashen Pact',10,80,0,1020,@HUNT_ACTIVATOR_ENTRY,4.75,7.75,2.5,2,1,24.0,50,2,1,
+ 'Elite Warlock archetype; maintains range while layering DoTs, fear, direct shadow damage, and Drain Life.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(104001,104,47809,0,800,1800,3000,4500,100,3,10,80,0,0,0,0,0,1,'Shadow Bolt - primary ranged cast'),
+(104002,104,47813,0,1200,2400,15000,18000,100,3,10,80,0,0,0,0,1,1,'Corruption - maintain damage over time'),
+(104003,104,47864,0,2200,3800,18000,22000,100,3,20,80,0,0,0,0,1,1,'Curse of Agony - maintain curse pressure'),
+(104004,104,6215,0,5500,8000,22000,28000,85,3,20,80,0,0,0,0,0,1,'Fear - create casting space'),
+(104005,104,47811,0,3500,5500,12000,16000,90,2,30,80,0,0,0,0,1,1,'Immolate - final additional DoT pressure'),
+(104006,104,47857,0,6500,9000,14000,18000,85,2,40,80,45,0,0,0,0,1,'Drain Life below 45% - sustain in final'),
+(104007,104,47860,0,0,0,26000,32000,100,2,50,80,30,0,0,1,0,1,'Death Coil below 30% - once per final');

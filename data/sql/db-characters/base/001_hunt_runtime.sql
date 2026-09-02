@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `hunt_runtime` (
   `final_location_id` INT UNSIGNED NOT NULL DEFAULT 0,
   `tracking_progress` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `ambushes_completed` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `ambush_pending` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 while a required ambush must still be driven off',
   `state` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1=tracking,2=final located,3=ready to turn in',
   `accepted_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
