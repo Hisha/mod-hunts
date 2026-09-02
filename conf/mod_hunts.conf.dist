@@ -53,3 +53,34 @@ Hunts.Elite.SealsPerCompletion = 1
 Hunts.Elite.EndgameRewardLevel = 80
 Hunts.Elite.EndgameRewardMinItemLevel = 200
 Hunts.Elite.EndgameRewardMaxItemLevel = 200
+
+# Elite random gear can be restricted to actual upgrades over the character's
+# currently equipped item in the matching slot. UpgradePoolPct controls how
+# close a candidate must be to the best detected upgrade to enter the random
+# selection pool. 0.70 = within the best 70% upgrade band.
+Hunts.Elite.RewardRequireUpgrade = 1
+Hunts.Elite.RewardUpgradePoolPct = 0.70
+
+
+# ----------------------------------------------------------
+# Huntmaster's Seal Store
+# ----------------------------------------------------------
+# The stock-client store uses Huntmaster gossip so the displayed Seal costs
+# always match what the server actually charges. Cost = 0 disables a tier.
+# Item-level bands are intentionally server configurable. Heroic-flagged items
+# are always excluded by the module regardless of these bands.
+Hunts.SealStore.Tier1.Cost = 5
+Hunts.SealStore.Tier1.MinItemLevel = 213
+Hunts.SealStore.Tier1.MaxItemLevel = 219
+
+Hunts.SealStore.Tier2.Cost = 10
+Hunts.SealStore.Tier2.MinItemLevel = 226
+Hunts.SealStore.Tier2.MaxItemLevel = 232
+
+Hunts.SealStore.Tier3.Cost = 20
+Hunts.SealStore.Tier3.MinItemLevel = 245
+Hunts.SealStore.Tier3.MaxItemLevel = 251
+
+Hunts.SealStore.Tier4.Cost = 30
+Hunts.SealStore.Tier4.MinItemLevel = 264
+Hunts.SealStore.Tier4.MaxItemLevel = 264

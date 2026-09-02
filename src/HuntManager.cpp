@@ -428,6 +428,137 @@ float ScoreRewardItem(Player* player, uint32 spec, RewardRole role, ItemTemplate
 
     return score;
 }
+
+float ScoreRewardPower(Player* player, uint32 spec, RewardRole role, ItemTemplate const& item)
+{
+    // Item level is deliberately part of the comparison against equipped gear.
+    // The spec score keeps itemization important while the ilvl term prevents a
+    // low-tier Hunt reward from replacing an obviously stronger raid item.
+    return ScoreRewardItem(player, spec, role, item) + static_cast<float>(item.ItemLevel) * 1.5f;
+}
+
+float GetEquippedItemPower(Player* player, uint32 spec, RewardRole role, uint8 equipmentSlot)
+{
+    if (!player)
+        return 0.0f;
+
+    Item* equipped = player->GetItemByPos(INVENTORY_SLOT_BAG_0, equipmentSlot);
+    if (!equipped || !equipped->GetTemplate())
+        return 0.0f;
+
+    return ScoreRewardPower(player, spec, role, *equipped->GetTemplate());
+}
+
+float GetEquippedPowerForCandidate(Player* player, uint32 spec, RewardRole role, ItemTemplate const& candidate)
+{
+    switch (candidate.InventoryType)
+    {
+        case INVTYPE_HEAD: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_HEAD);
+        case INVTYPE_NECK: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_NECK);
+        case INVTYPE_SHOULDERS: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_SHOULDERS);
+        case INVTYPE_CLOAK: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_BACK);
+        case INVTYPE_CHEST:
+        case INVTYPE_ROBE: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_CHEST);
+        case INVTYPE_WRISTS: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_WRISTS);
+        case INVTYPE_HANDS: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_HANDS);
+        case INVTYPE_WAIST: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_WAIST);
+        case INVTYPE_LEGS: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_LEGS);
+        case INVTYPE_FEET: return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_FEET);
+        case INVTYPE_FINGER:
+            return std::min(GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_FINGER1),
+                GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_FINGER2));
+        case INVTYPE_TRINKET:
+            return std::min(GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_TRINKET1),
+                GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_TRINKET2));
+        case INVTYPE_SHIELD:
+        case INVTYPE_HOLDABLE:
+        case INVTYPE_WEAPONOFFHAND:
+            return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_OFFHAND);
+        case INVTYPE_RANGED:
+        case INVTYPE_RANGEDRIGHT:
+        case INVTYPE_THROWN:
+        case INVTYPE_RELIC:
+            return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_RANGED);
+        case INVTYPE_WEAPON:
+        {
+            float mainPower = GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_MAINHAND);
+            float offPower = GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_OFFHAND);
+            return offPower > 0.0f ? std::min(mainPower, offPower) : mainPower;
+        }
+        case INVTYPE_WEAPONMAINHAND:
+        case INVTYPE_2HWEAPON:
+            return GetEquippedItemPower(player, spec, role, EQUIPMENT_SLOT_MAINHAND);
+        default:
+            return 0.0f;
+    }
+}
+
+bool IsSpecCompatibleEquipment(uint32 spec, ItemTemplate const& item)
+{
+    switch (spec)
+    {
+        case TALENT_TREE_PALADIN_RETRIBUTION:
+        case TALENT_TREE_WARRIOR_ARMS:
+            if (item.Class == ITEM_CLASS_WEAPON)
+                return item.InventoryType == INVTYPE_2HWEAPON;
+            if (item.InventoryType == INVTYPE_SHIELD || item.InventoryType == INVTYPE_HOLDABLE ||
+                item.InventoryType == INVTYPE_WEAPONOFFHAND)
+                return false;
+            break;
+        case TALENT_TREE_PALADIN_PROTECTION:
+        case TALENT_TREE_WARRIOR_PROTECTION:
+            if (item.InventoryType == INVTYPE_2HWEAPON)
+                return false;
+            break;
+        case TALENT_TREE_PALADIN_HOLY:
+            if (item.InventoryType == INVTYPE_2HWEAPON)
+                return false;
+            break;
+        case TALENT_TREE_ROGUE_ASSASSINATION:
+        case TALENT_TREE_ROGUE_COMBAT:
+        case TALENT_TREE_ROGUE_SUBTLETY:
+        case TALENT_TREE_SHAMAN_ENHANCEMENT:
+            if (item.InventoryType == INVTYPE_2HWEAPON)
+                return false;
+            break;
+        default:
+            break;
+    }
+
+    return true;
+}
+
+bool MatchesSealStoreSlot(ItemTemplate const& item, hunts::SealStoreSlot slot)
+{
+    switch (slot)
+    {
+        case hunts::SealStoreSlot::Weapon:
+            return item.Class == ITEM_CLASS_WEAPON && item.InventoryType != INVTYPE_WEAPONOFFHAND &&
+                item.InventoryType != INVTYPE_RANGED && item.InventoryType != INVTYPE_RANGEDRIGHT &&
+                item.InventoryType != INVTYPE_THROWN && item.InventoryType != INVTYPE_RELIC;
+        case hunts::SealStoreSlot::Head: return item.InventoryType == INVTYPE_HEAD;
+        case hunts::SealStoreSlot::Neck: return item.InventoryType == INVTYPE_NECK;
+        case hunts::SealStoreSlot::Shoulder: return item.InventoryType == INVTYPE_SHOULDERS;
+        case hunts::SealStoreSlot::Back: return item.InventoryType == INVTYPE_CLOAK;
+        case hunts::SealStoreSlot::Chest: return item.InventoryType == INVTYPE_CHEST || item.InventoryType == INVTYPE_ROBE;
+        case hunts::SealStoreSlot::Wrist: return item.InventoryType == INVTYPE_WRISTS;
+        case hunts::SealStoreSlot::Hands: return item.InventoryType == INVTYPE_HANDS;
+        case hunts::SealStoreSlot::Waist: return item.InventoryType == INVTYPE_WAIST;
+        case hunts::SealStoreSlot::Legs: return item.InventoryType == INVTYPE_LEGS;
+        case hunts::SealStoreSlot::Feet: return item.InventoryType == INVTYPE_FEET;
+        case hunts::SealStoreSlot::Ring: return item.InventoryType == INVTYPE_FINGER;
+        case hunts::SealStoreSlot::Trinket: return item.InventoryType == INVTYPE_TRINKET;
+        case hunts::SealStoreSlot::OffHand:
+            return item.InventoryType == INVTYPE_SHIELD || item.InventoryType == INVTYPE_HOLDABLE ||
+                item.InventoryType == INVTYPE_WEAPONOFFHAND;
+        case hunts::SealStoreSlot::Relic:
+            return item.InventoryType == INVTYPE_RELIC || item.InventoryType == INVTYPE_RANGED ||
+                item.InventoryType == INVTYPE_RANGEDRIGHT || item.InventoryType == INVTYPE_THROWN;
+        default:
+            return false;
+    }
+}
+
 }
 
 namespace hunts
@@ -948,6 +1079,202 @@ bool HuntManager::IsEliteAvailableToday(Player const* player) const
     return true;
 }
 
+bool HuntManager::IsSealStoreAvailable(Player const* player) const
+{
+    if (!_enabled || !player)
+        return false;
+
+    uint8 const requiredLevel = std::max(_eliteSealMinimumLevel, _eliteEndgameRewardLevel);
+    return player->GetLevel() >= requiredLevel;
+}
+
+uint32 HuntManager::GetSealBalance(Player const* player) const
+{
+    if (!player)
+        return 0;
+
+    if (QueryResult result = CharacterDatabase.Query(
+        "SELECT `huntmaster_seals` FROM `hunt_stats` WHERE `guid`={}", player->GetGUID().GetCounter()))
+        return result->Fetch()[0].Get<uint32>();
+
+    return 0;
+}
+
+void HuntManager::ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct)
+{
+    _eliteRewardRequireUpgrade = requireUpgrade;
+    _eliteRewardUpgradePoolPct = std::max(0.0f, std::min(1.0f, upgradePoolPct));
+}
+
+void HuntManager::ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel)
+{
+    if (tier < 1 || tier > 4)
+        return;
+
+    uint8 const index = tier - 1;
+    _sealStoreTierCost[index] = cost;
+    _sealStoreTierMinItemLevel[index] = std::min(minItemLevel, maxItemLevel);
+    _sealStoreTierMaxItemLevel[index] = std::max(minItemLevel, maxItemLevel);
+}
+
+uint32 HuntManager::GetSealStoreTierCost(uint8 tier) const
+{
+    return tier >= 1 && tier <= 4 ? _sealStoreTierCost[tier - 1] : 0;
+}
+
+uint32 HuntManager::GetSealStoreTierMinItemLevel(uint8 tier) const
+{
+    return tier >= 1 && tier <= 4 ? _sealStoreTierMinItemLevel[tier - 1] : 0;
+}
+
+uint32 HuntManager::GetSealStoreTierMaxItemLevel(uint8 tier) const
+{
+    return tier >= 1 && tier <= 4 ? _sealStoreTierMaxItemLevel[tier - 1] : 0;
+}
+
+bool HuntManager::IsSealStoreItemEligible(Player* player, uint32 spec, uint8 tier, SealStoreSlot slot, uint32 itemId) const
+{
+    if (!IsSealStoreAvailable(player) || tier < 1 || tier > 4)
+        return false;
+
+    ItemTemplate const* item = sObjectMgr->GetItemTemplate(itemId);
+    if (!item || item->Quality != ITEM_QUALITY_EPIC)
+        return false;
+    if (item->Class != ITEM_CLASS_WEAPON && item->Class != ITEM_CLASS_ARMOR)
+        return false;
+    if (!IsSpecCompatibleEquipment(spec, *item))
+        return false;
+    if (!MatchesSealStoreSlot(*item, slot))
+        return false;
+    if (item->RequiredLevel > player->GetLevel())
+        return false;
+    if (item->ItemLevel < GetSealStoreTierMinItemLevel(tier) || item->ItemLevel > GetSealStoreTierMaxItemLevel(tier))
+        return false;
+
+    // Huntmaster progression deliberately stops short of Heroic raid loot.
+    // The 3.3.5a item flag is also what produces the green "Heroic" tooltip.
+    if (item->HasFlag(ITEM_FLAG_HEROIC_TOOLTIP))
+        return false;
+
+    if (player->CanUseItem(item) != EQUIP_ERR_OK)
+        return false;
+
+    // Keep the Seal store PvE-focused. PvP pieces can share the same item-level
+    // bands, but resilience gear is not part of Hunt raid progression.
+    for (uint32 i = 0; i < item->StatsCount && i < MAX_ITEM_PROTO_STATS; ++i)
+        if (item->ItemStat[i].ItemStatType == ITEM_MOD_RESILIENCE_RATING && item->ItemStat[i].ItemStatValue > 0)
+            return false;
+
+    // Do not fill a plate wearer's store with technically equipable cloth, etc.
+    if (item->Class == ITEM_CLASS_ARMOR && GetArmorPreference(player, *item) < 0.0f)
+        return false;
+
+    RewardRole const role = GetRewardRole(player, spec);
+    return ScoreRewardItem(player, spec, role, *item) > 0.0f;
+}
+
+std::vector<SealStoreItem> HuntManager::BuildSealStoreItems(Player* player, uint32 spec, uint8 tier, SealStoreSlot slot) const
+{
+    std::vector<SealStoreItem> items;
+    if (!IsSealStoreAvailable(player) || tier < 1 || tier > 4 || GetSealStoreTierCost(tier) == 0)
+        return items;
+
+    RewardRole const role = GetRewardRole(player, spec);
+    for (auto const& [itemId, itemTemplate] : *sObjectMgr->GetItemTemplateStore())
+    {
+        if (!IsSealStoreItemEligible(player, spec, tier, slot, itemId))
+            continue;
+
+        items.push_back({ itemId, itemTemplate.Name1, itemTemplate.ItemLevel,
+            ScoreRewardItem(player, spec, role, itemTemplate) });
+    }
+
+    std::sort(items.begin(), items.end(), [](SealStoreItem const& a, SealStoreItem const& b)
+    {
+        if (std::fabs(a.Score - b.Score) > 0.01f)
+            return a.Score > b.Score;
+        if (a.ItemLevel != b.ItemLevel)
+            return a.ItemLevel > b.ItemLevel;
+        return a.ItemId < b.ItemId;
+    });
+
+    // Gossip is the stock-client fallback UI. Keep each category readable; a
+    // future optional addon can expose the same authoritative store more richly.
+    if (items.size() > 20)
+        items.resize(20);
+
+    return items;
+}
+
+bool HuntManager::PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier, uint32 itemId, std::string& message)
+{
+    if (!IsSealStoreAvailable(player))
+    {
+        message = "Huntmaster's Seal rewards are reserved for level-cap hunters.";
+        return false;
+    }
+
+    uint32 const cost = GetSealStoreTierCost(tier);
+    if (!cost)
+    {
+        message = "That Huntmaster reward tier is disabled.";
+        return false;
+    }
+
+    bool eligible = false;
+    for (uint8 rawSlot = static_cast<uint8>(SealStoreSlot::Weapon);
+         rawSlot <= static_cast<uint8>(SealStoreSlot::Relic); ++rawSlot)
+    {
+        if (IsSealStoreItemEligible(player, spec, tier, static_cast<SealStoreSlot>(rawSlot), itemId))
+        {
+            eligible = true;
+            break;
+        }
+    }
+    if (!eligible)
+    {
+        message = "That item is not an eligible Huntmaster's Seal reward for this specialization and tier.";
+        return false;
+    }
+
+    uint32 const balance = GetSealBalance(player);
+    if (balance < cost)
+    {
+        message = "You need " + std::to_string(cost) + " Huntmaster's Seals, but you only have " + std::to_string(balance) + ".";
+        return false;
+    }
+
+    ItemPosCountVec dest;
+    if (player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, 1) != EQUIP_ERR_OK)
+    {
+        message = "Make room in your bags before purchasing this reward.";
+        return false;
+    }
+
+    uint32 const guid = player->GetGUID().GetCounter();
+    CharacterDatabase.DirectExecute(
+        "UPDATE `hunt_stats` SET `huntmaster_seals`=`huntmaster_seals`-{} WHERE `guid`={} AND `huntmaster_seals`>={}",
+        cost, guid, cost);
+
+    if (Item* item = player->StoreNewItem(dest, itemId, true))
+    {
+        player->SendNewItem(item, 1, true, false);
+        ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(itemId);
+        uint32 const remaining = GetSealBalance(player);
+        message = "Purchased " + std::string(itemTemplate ? itemTemplate->Name1 : "Huntmaster reward") +
+            " for " + std::to_string(cost) + " Huntmaster's Seals. " + std::to_string(remaining) + " Seal" +
+            (remaining == 1 ? " remains." : "s remain.");
+        return true;
+    }
+
+    // Extremely unlikely after CanStoreNewItem succeeds, but never consume a
+    // virtual currency if the item could not actually be created.
+    CharacterDatabase.DirectExecute(
+        "UPDATE `hunt_stats` SET `huntmaster_seals`=`huntmaster_seals`+{} WHERE `guid`={}", cost, guid);
+    message = "The purchase could not be completed; your Huntmaster's Seals were restored.";
+    return false;
+}
+
 bool HuntManager::RequestEliteHunt(Player* player, Creature* giver, std::string& message)
 {
     if(!_enabled){message="The Hunt system is disabled.";return false;}
@@ -1049,12 +1376,13 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     // Build a spec-aware pool from existing Blizzard equipment. First use the
     // core's own CanUseItem() rules as a hard gate (proficiency, class, level,
     // skill/reputation requirements, etc.), then score the survivors for the
-    // hunter's active talent tree. This deliberately prefers the right *type*
-    // of gear without requiring every Hunt reward to be an upgrade.
+    // hunter's active talent tree. Elite Hunts can additionally require the
+    // selected item to beat the character's currently equipped matching slot.
     struct ScoredRewardItem
     {
         uint32 ItemId = 0;
         float Score = 0.0f;
+        float UpgradeDelta = 0.0f;
     };
 
     std::vector<ScoredRewardItem> scoredCandidates;
@@ -1081,27 +1409,59 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         if (levelCapElite && (itemTemplate.ItemLevel < _eliteEndgameRewardMinItemLevel || itemTemplate.ItemLevel > _eliteEndgameRewardMaxItemLevel))
             continue;
 
+        if (!IsSpecCompatibleEquipment(activeTalentTree, itemTemplate))
+            continue;
         if (player->CanUseItem(&itemTemplate) != EQUIP_ERR_OK)
             continue;
 
-        scoredCandidates.push_back({itemId, ScoreRewardItem(player, activeTalentTree, rewardRole, itemTemplate)});
+        float const score = ScoreRewardItem(player, activeTalentTree, rewardRole, itemTemplate);
+        if (eliteHunt && score <= 0.0f)
+            continue;
+        float upgradeDelta = 0.0f;
+        if (eliteHunt)
+        {
+            float const equippedPower = GetEquippedPowerForCandidate(player, activeTalentTree, rewardRole, itemTemplate);
+            float const candidatePower = ScoreRewardPower(player, activeTalentTree, rewardRole, itemTemplate);
+            upgradeDelta = candidatePower - equippedPower;
+
+            // Elite rewards are intended to help the character gear up. If the
+            // candidate is not actually stronger than what is already equipped
+            // in the matching slot, do not put it in the random reward pool.
+            if (_eliteRewardRequireUpgrade && upgradeDelta <= 1.0f)
+                continue;
+        }
+
+        scoredCandidates.push_back({itemId, score, upgradeDelta});
     }
 
-    std::sort(scoredCandidates.begin(), scoredCandidates.end(), [](ScoredRewardItem const& a, ScoredRewardItem const& b)
+    std::sort(scoredCandidates.begin(), scoredCandidates.end(), [eliteHunt](ScoredRewardItem const& a, ScoredRewardItem const& b)
     {
+        if (eliteHunt && std::fabs(a.UpgradeDelta - b.UpgradeDelta) > 0.01f)
+            return a.UpgradeDelta > b.UpgradeDelta;
         return a.Score > b.Score;
     });
 
     // Keep some randomness so Hunt rewards do not collapse into the same item
-    // every time. Pick from the strongest slice of the appropriate pool.
+    // every time. Elite Hunts first target the weakest equipped slots, then
+    // randomize among similarly useful upgrades. Normal Hunts retain the
+    // original strongest-spec-item behavior.
     std::vector<uint32> candidates;
     if (!scoredCandidates.empty())
     {
-        float bestScore = scoredCandidates.front().Score;
-        float cutoff = bestScore - 12.0f;
+        float const bestScore = scoredCandidates.front().Score;
+        float const bestUpgrade = scoredCandidates.front().UpgradeDelta;
+        float const scoreCutoff = bestScore - 12.0f;
+        float const upgradeCutoff = bestUpgrade * _eliteRewardUpgradePoolPct;
         for (ScoredRewardItem const& candidate : scoredCandidates)
         {
-            if (candidate.Score < cutoff || candidates.size() >= 12)
+            if (candidates.size() >= 12)
+                break;
+            if (eliteHunt)
+            {
+                if (candidate.UpgradeDelta < upgradeCutoff)
+                    break;
+            }
+            else if (candidate.Score < scoreCutoff)
                 break;
             candidates.push_back(candidate.ItemId);
         }
@@ -1171,7 +1531,12 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
             rewardMessage << ", and " << rewardTemplate->Name1;
     }
     else if (candidates.empty())
-        rewardMessage << ". No suitable item reward was found for this level/quality roll";
+    {
+        if (eliteHunt)
+            rewardMessage << ". Your equipped gear is already stronger than the available Elite Hunt reward pool";
+        else
+            rewardMessage << ". No suitable item reward was found for this level/quality roll";
+    }
     else
         rewardMessage << ". Your bags were too full for the item reward";
     if (sealEligible)

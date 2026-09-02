@@ -29,6 +29,34 @@ enum class HuntState : uint8
     ReadyToTurnIn = 3
 };
 
+
+enum class SealStoreSlot : uint8
+{
+    Weapon = 0,
+    Head = 1,
+    Neck = 2,
+    Shoulder = 3,
+    Back = 4,
+    Chest = 5,
+    Wrist = 6,
+    Hands = 7,
+    Waist = 8,
+    Legs = 9,
+    Feet = 10,
+    Ring = 11,
+    Trinket = 12,
+    OffHand = 13,
+    Relic = 14
+};
+
+struct SealStoreItem
+{
+    uint32 ItemId = 0;
+    std::string Name;
+    uint32 ItemLevel = 0;
+    float Score = 0.0f;
+};
+
 struct HuntPreyAbilityDefinition
 {
     uint32 Id = 0;
@@ -160,6 +188,15 @@ public:
     bool RequestEliteHunt(Player* player, Creature* giver, std::string& message);
     bool IsEliteUnlocked(Player const* player) const;
     bool IsEliteAvailableToday(Player const* player) const;
+    bool IsSealStoreAvailable(Player const* player) const;
+    uint32 GetSealBalance(Player const* player) const;
+    void ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel);
+    void ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct);
+    uint32 GetSealStoreTierCost(uint8 tier) const;
+    uint32 GetSealStoreTierMinItemLevel(uint8 tier) const;
+    uint32 GetSealStoreTierMaxItemLevel(uint8 tier) const;
+    std::vector<SealStoreItem> BuildSealStoreItems(Player* player, uint32 spec, uint8 tier, SealStoreSlot slot) const;
+    bool PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier, uint32 itemId, std::string& message);
     bool AbandonHunt(Player* player, std::string& message);
     bool TurnInHunt(Player* player, Creature* giver, std::string& message);
     void OnCreatureKill(Player* player, Creature* killed);
@@ -206,6 +243,7 @@ private:
     uint8 GetNextAmbushThreshold(HuntRuntime const& runtime, HuntDefinition const& hunt) const;
     void InitializeAbilityTimers(HuntRuntime const& runtime, bool finalEncounter);
     void UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Creature* prey, uint32 elapsedMs);
+    bool IsSealStoreItemEligible(Player* player, uint32 spec, uint8 tier, SealStoreSlot slot, uint32 itemId) const;
 
     bool _enabled = false;
     bool _debug = false;
@@ -224,6 +262,11 @@ private:
     uint8 _eliteEndgameRewardLevel = 80;
     uint32 _eliteEndgameRewardMinItemLevel = 200;
     uint32 _eliteEndgameRewardMaxItemLevel = 200;
+    uint32 _sealStoreTierCost[4] = { 5, 10, 20, 30 };
+    uint32 _sealStoreTierMinItemLevel[4] = { 213, 226, 245, 264 };
+    uint32 _sealStoreTierMaxItemLevel[4] = { 219, 232, 251, 264 };
+    bool _eliteRewardRequireUpgrade = true;
+    float _eliteRewardUpgradePoolPct = 0.70f;
     uint8 _trackingProgressMin = 3;
     uint8 _trackingProgressMax = 7;
     float _groupCreditRadius = 100.0f;

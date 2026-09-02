@@ -35,6 +35,20 @@ enum class HuntsConfig
     EliteEndgameRewardLevel,
     EliteEndgameRewardMinItemLevel,
     EliteEndgameRewardMaxItemLevel,
+    EliteRewardRequireUpgrade,
+    EliteRewardUpgradePoolPct,
+    SealStoreTier1Cost,
+    SealStoreTier1MinItemLevel,
+    SealStoreTier1MaxItemLevel,
+    SealStoreTier2Cost,
+    SealStoreTier2MinItemLevel,
+    SealStoreTier2MaxItemLevel,
+    SealStoreTier3Cost,
+    SealStoreTier3MinItemLevel,
+    SealStoreTier3MaxItemLevel,
+    SealStoreTier4Cost,
+    SealStoreTier4MinItemLevel,
+    SealStoreTier4MaxItemLevel,
     TrackingProgressMin,
     TrackingProgressMax,
     GroupCreditRadius,
@@ -65,6 +79,20 @@ public:
         SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardLevel, "Hunts.Elite.EndgameRewardLevel", 80);
         SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMinItemLevel, "Hunts.Elite.EndgameRewardMinItemLevel", 200);
         SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMaxItemLevel, "Hunts.Elite.EndgameRewardMaxItemLevel", 200);
+        SetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade, "Hunts.Elite.RewardRequireUpgrade", true);
+        SetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct, "Hunts.Elite.RewardUpgradePoolPct", 0.70f);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier1Cost, "Hunts.SealStore.Tier1.Cost", 5);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier1MinItemLevel, "Hunts.SealStore.Tier1.MinItemLevel", 213);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier1MaxItemLevel, "Hunts.SealStore.Tier1.MaxItemLevel", 219);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier2Cost, "Hunts.SealStore.Tier2.Cost", 10);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier2MinItemLevel, "Hunts.SealStore.Tier2.MinItemLevel", 226);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier2MaxItemLevel, "Hunts.SealStore.Tier2.MaxItemLevel", 232);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier3Cost, "Hunts.SealStore.Tier3.Cost", 20);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier3MinItemLevel, "Hunts.SealStore.Tier3.MinItemLevel", 245);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier3MaxItemLevel, "Hunts.SealStore.Tier3.MaxItemLevel", 251);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier4Cost, "Hunts.SealStore.Tier4.Cost", 30);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier4MinItemLevel, "Hunts.SealStore.Tier4.MinItemLevel", 264);
+        SetConfigValue<uint32>(HuntsConfig::SealStoreTier4MaxItemLevel, "Hunts.SealStore.Tier4.MaxItemLevel", 264);
         SetConfigValue<uint32>(HuntsConfig::TrackingProgressMin, "Hunts.Tracking.ProgressMin", 3);
         SetConfigValue<uint32>(HuntsConfig::TrackingProgressMax, "Hunts.Tracking.ProgressMax", 7);
         SetConfigValue<float>(HuntsConfig::GroupCreditRadius, "Hunts.GroupCreditRadius", 100.0f);
@@ -122,6 +150,25 @@ public:
             static_cast<uint8>(std::min<uint32>(100, huntsConfig.GetConfigValue<uint32>(HuntsConfig::TrackingProgressMax))),
             huntsConfig.GetConfigValue<float>(HuntsConfig::GroupCreditRadius),
             huntsConfig.GetConfigValue<float>(HuntsConfig::SharedFinalCreditRadius));
+        sHuntMgr.ConfigureEliteRewardTargeting(
+            huntsConfig.GetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct));
+        sHuntMgr.ConfigureSealStoreTier(1,
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1Cost),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1MinItemLevel),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier1MaxItemLevel));
+        sHuntMgr.ConfigureSealStoreTier(2,
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier2Cost),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier2MinItemLevel),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier2MaxItemLevel));
+        sHuntMgr.ConfigureSealStoreTier(3,
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier3Cost),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier3MinItemLevel),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier3MaxItemLevel));
+        sHuntMgr.ConfigureSealStoreTier(4,
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier4Cost),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier4MinItemLevel),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::SealStoreTier4MaxItemLevel));
         sHuntMgr.LoadDefinitions();
         LOG_INFO("server.loading", "Hunts module configured.");
     }
