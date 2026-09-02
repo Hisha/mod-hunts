@@ -2693,6 +2693,15 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
     else ChatHandler(player->GetSession()).PSendSysMessage("|cffff0000[Hunts]|r {} emerges for the final confrontation!",h->Name);
     prey->AI()->AttackStart(player);
 
+    // Wildclaw opens in Cat Form. The later Bear transition is owned by the
+    // Hunt combat brain so the phase change is deterministic rather than a
+    // random ability roll.
+    if (r.PreyId == 105)
+    {
+        prey->CastSpell(prey, 768, true); // Cat Form
+        _druidBearPhase[r.CharacterGuid] = false;
+    }
+
     // Combat style is prey-authored data. Ranged Elite prey use AzerothCore's
     // ranged chase generator so they try to maintain casting distance instead
     // of immediately running into melee like a normal creature AI.
@@ -2712,6 +2721,7 @@ void HuntManager::InitializeAbilityTimers(HuntRuntime const& runtime, bool final
     _fearDrStage.erase(runtime.CharacterGuid);
     _fearDrResetTimers.erase(runtime.CharacterGuid);
     _rogueReopenTimers.erase(runtime.CharacterGuid);
+    _druidBearPhase.erase(runtime.CharacterGuid);
     auto& timers = _abilityTimers[runtime.CharacterGuid];
     timers.clear();
 
@@ -2784,6 +2794,19 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
         prey->GetMotionMaster()->MoveChase(player);
     }
 
+    // Wildclaw is a two-phase Feral encounter. Cat is the aggressive opener;
+    // at 45% prey health it deliberately drops Cat and becomes a Bear for the
+    // defensive half of the fight. This is state-driven so a cooldown roll can
+    // never leave the prey in the wrong form.
+    if (runtime.PreyId == 105 && !_druidBearPhase[runtime.CharacterGuid] && prey->GetHealthPct() <= 45.0f)
+    {
+        prey->RemoveAurasDueToSpell(768);
+        prey->CastSpell(prey, 5487, true); // Bear Form
+        _druidBearPhase[runtime.CharacterGuid] = true;
+        prey->AI()->AttackStart(player);
+        prey->GetMotionMaster()->MoveChase(player);
+    }
+
     for (HuntPreyAbilityDefinition const& ability : abilityIt->second)
     {
         if (!ability.Enabled || !(ability.EncounterMask & encounterBit) || !ability.SpellId)
@@ -2793,6 +2816,15 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
             continue;
         if (ability.OncePerEncounter && _abilityUsed[runtime.CharacterGuid][ability.Id])
             continue;
+
+        // Feral techniques are form-specific. IDs 105001-105003 are Cat
+        // techniques; 105004+ are Bear-phase techniques.
+        if (runtime.PreyId == 105)
+        {
+            bool const bear = _druidBearPhase[runtime.CharacterGuid];
+            if ((!bear && ability.Id >= 105004) || (bear && ability.Id <= 105003))
+                continue;
+        }
 
         // Cooldowns advance with combat time even while their tactical condition
         // is not currently true. Once ready, the ability waits for a valid
@@ -2889,7 +2921,8 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
                 // combo-point state that a creature shell does not naturally
                 // maintain. Hunt AI owns their cooldowns, so trigger those melee
                 // techniques to make the authored class kit reliable.
-                bool const resourceDrivenMeleeTechnique = runtime.PreyId == 102 || runtime.PreyId == 103;
+                bool const resourceDrivenMeleeTechnique = runtime.PreyId == 102 || runtime.PreyId == 103 ||
+                    runtime.PreyId == 105 || runtime.PreyId == 106;
                 prey->CastSpell(target, ability.SpellId, resourceDrivenMeleeTechnique);
             }
 

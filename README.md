@@ -114,3 +114,12 @@ Two additional class-style Elite prey join the roster in the existing canonical 
 **The Veiled Knife** now has a Rogue-specific combat brain rather than only a melee ability list. It applies Deadly and Crippling Poison pressure and gains a true Vanish/reposition/reopen cycle. Vanish remains inside the active Hunt encounter, moves the prey behind the hunter, and reopens with Ambush (or Cheap Shot when range prevents Ambush) without clearing the Hunt or triggering an evade reset.
 
 **The Ashen Pact** keeps Fear as a signature Warlock tool but no longer chains full-duration fears. Hunt-owned Fear uses encounter-local diminishing returns of 6 seconds, 3 seconds, 1.5 seconds, then temporary immunity, resetting 15 seconds after the last Fear expires. Fear's authored cooldown is also widened to 24-30 seconds. A successful Fear pushes Death Coil back until at least five seconds after Fear ends so the Warlock cannot turn the two abilities into one long loss-of-control chain.
+
+## 1.0.10-dev - Wildclaw and Stormcaller Elite archetypes
+
+Two more class-style Elite prey join the canonical `prebuilt/911_elite_prey.sql` roster:
+
+- **The Wildclaw** - Feral Druid archetype with a Hunt-owned two-phase combat brain. It opens in Cat Form with Pounce, Rake, and Mangle pressure, then deterministically shifts to Bear Form at 45% prey health for Bash, Bear Mangle, and a once-per-final low-health Frenzied Regeneration. The form transition is state-driven rather than left to random ability timing.
+- **The Stormcaller** - Enhancement Shaman archetype using Lightning Shield, Stormstrike, Flame Shock, Earth Shock, Earthbind Totem, final-only Magma Totem, and a once-per-final Feral Spirit below 40%. The authored totem package is intentionally limited to Earthbind plus Magma rather than dropping a full four-totem field.
+
+Druid and Shaman player-resource techniques are triggered by Hunt AI just like the existing Warrior/Rogue techniques, avoiding reliance on player-only rage, energy, mana, stance, or combo-point behavior in creature shells. No schema change is required for 1.0.10.

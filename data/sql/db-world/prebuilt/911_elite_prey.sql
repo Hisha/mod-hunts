@@ -157,3 +157,63 @@ INSERT INTO `hunt_prey_ability`
 (104005,104,47811,0,3500,5500,12000,16000,90,2,30,80,0,0,0,0,1,1,'Immolate - final additional DoT pressure'),
 (104006,104,47857,0,6500,9000,14000,18000,85,2,40,80,45,0,0,0,0,1,'Drain Life below 45% - sustain in final'),
 (104007,104,47860,0,0,0,28000,34000,100,2,50,80,30,0,0,1,0,1,'Death Coil below 30% - once per final, anti-chain gated');
+
+-- ---------------------------------------------------------------------------
+-- The Wildclaw - Feral Druid archetype
+-- Druid of the Fang supplies the humanoid shell; the Hunt combat brain owns
+-- the Cat -> Bear phase transition so shapeshifting is deterministic.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1021,'Elite Hunt - The Wildclaw',3840,'The Wildclaw','Fang of the Untamed',14,1,1.05,1.05,1.12,1,
+ 'Elite Feral-Druid-style prey; opens as Cat with bleeds and changes to Bear for the defensive second phase.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(105,'The Wildclaw',10,80,0,1021,@HUNT_ACTIVATOR_ENTRY,5.00,8.00,2.5,2,0,0,50,2,1,
+ 'Elite Feral Druid archetype; Cat opener changes to Bear below 45% with defensive sustain.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(105001,105,49803,0,0,700,30000,30000,100,3,20,80,0,0,1,1,0,1,'Pounce - Cat-form opening stun/bleed'),
+(105002,105,48574,0,1000,1800,9000,12000,100,3,10,80,0,0,1,0,1,1,'Rake - Cat-form bleed pressure'),
+(105003,105,48566,0,1800,2800,4500,6500,100,3,20,80,0,0,1,0,0,1,'Mangle (Cat) - primary Cat pressure'),
+(105004,105,8983,0,0,800,18000,24000,90,3,20,80,45,0,1,0,0,1,'Bash - Bear-form control'),
+(105005,105,48564,0,900,1600,5000,7000,100,3,20,80,45,0,1,0,0,1,'Mangle (Bear) - primary Bear pressure'),
+(105006,105,22842,1,0,500,30000,30000,100,2,30,80,28,0,0,1,0,1,'Frenzied Regeneration - once-per-final low-health sustain');
+
+-- ---------------------------------------------------------------------------
+-- The Stormcaller - Enhancement Shaman archetype
+-- Farseer Nobundo supplies the shaman shell. The rotation mixes melee shocks
+-- with a deliberately small totem package so the arena does not become a four-
+-- totem clutter field. Earthbind controls space; Magma punishes staying put.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1022,'Elite Hunt - The Stormcaller',17204,'The Stormcaller','Voice of the Broken Sky',14,1,1.05,1.08,1.13,1,
+ 'Elite Enhancement-Shaman-style prey; Stormstrike, shocks, Lightning Shield, totems, and Feral Spirit pressure.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(106,'The Stormcaller',10,80,0,1022,@HUNT_ACTIVATOR_ENTRY,5.00,8.00,2.5,2,0,0,50,2,1,
+ 'Elite Enhancement Shaman archetype; melee burst backed by shocks, shield, limited totems, and final Feral Spirits.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(106001,106,49281,1,0,500,30000,36000,100,3,10,80,0,0,0,0,1,1,'Lightning Shield - maintained self buff'),
+(106002,106,17364,0,1000,1800,7000,9000,100,3,20,80,0,0,1,0,0,1,'Stormstrike - signature melee burst'),
+(106003,106,49233,0,1800,2800,12000,15000,100,3,20,80,0,0,0,0,1,1,'Flame Shock - maintained fire pressure'),
+(106004,106,49231,0,3500,5000,7000,10000,85,3,20,80,0,0,0,0,0,1,'Earth Shock - direct shock pressure'),
+(106005,106,2484,1,2500,4000,30000,36000,100,3,20,80,0,0,0,0,0,1,'Earthbind Totem - movement-control totem'),
+(106006,106,58734,1,6500,8500,30000,36000,100,2,30,80,0,0,0,0,0,1,'Magma Totem - final positional punishment'),
+(106007,106,51533,1,9000,12000,60000,60000,100,2,40,80,40,0,0,1,0,1,'Feral Spirit - once-per-final pressure below 40%');
