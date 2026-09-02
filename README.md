@@ -63,3 +63,22 @@ At level 80, the immediate Elite Hunt equipment reward is capped at item level 2
 ## 1.0.3-dev - Admin tuning layer
 
 Balance-sensitive server policy is now exposed through `mod_hunts.conf`: Elite unlock/daily limit, global Elite health/damage/armor, Elite XP/gold, Seal level/count, endgame reward level/item-level band, tracking gain, and group/shared-final credit radii. Per-prey identity and ability tuning remains data-driven in SQL; global config multipliers stack on top.
+
+## 1.0.4-dev - Huntmaster's Seal store and upgrade-aware Elite rewards
+
+Level-80 Elite Hunts now feed a two-layer progression loop. The immediate Elite reward remains capped by the configured endgame item-level band, while each qualifying completion awards virtual Huntmaster's Seals. Huntmasters provide a fully server-authoritative Seal store with spec selection, tiered costs, confirmation before purchase, Seal deduction, and item delivery. The store deliberately does not depend on a custom client currency or DBC patch; an optional custom UI can be added later without changing server authority.
+
+Elite random rewards are upgrade-aware. The reward selector evaluates the character's currently equipped gear and strongly favors slots where an eligible Hunt reward is a meaningful upgrade. Slots already carrying gear stronger than the configured Elite reward pool are excluded instead of repeatedly producing useless items (for example, a heroic ICC weapon should prevent an item-level-200 weapon reward from being selected).
+
+## 1.0.5-dev - Elite archetypes: The Winterborn and The Headsman
+
+Added two new class-style Elite Hunt prey to validate opposite combat styles:
+
+- **The Winterborn** - Frost Mage archetype. Uses a ranged/kiting combat style with Frostbolt, Frost Nova, Ice Barrier, Cone of Cold, and a low-health Ice Block in the final encounter.
+- **The Headsman** - Arms Warrior archetype. Uses melee pressure with Charge, Hamstring, Mortal Strike, Intimidating Shout, and Execute when the hunter is low on health.
+
+The prey ability system now supports a hunter/victim-health threshold in addition to the existing prey-health threshold, allowing abilities such as Execute to react to the player's health. Prey definitions also support a data-driven combat style and preferred range so ranged Elite archetypes can maintain distance without prey-specific C++ branches.
+
+### SQL maintenance convention
+
+Canonical base SQL contains the complete current schema. Prebuilt content SQL contains only content/data and must not alter table structure. Schema changes for an already-running development install belong in clearly named files under `data/sql/db-world/updates/`. Elite prey content is kept together in `prebuilt/911_elite_prey.sql`; do not create one numbered prebuilt file per Elite archetype unless the content truly belongs to a separate subsystem.

@@ -9,6 +9,7 @@
 #include "DBCStores.h"
 #include "Log.h"
 #include "Map.h"
+#include "MotionMaster.h"
 #include "ObjectMgr.h"
 #include "Item.h"
 #include "ObjectAccessor.h"
@@ -649,7 +650,7 @@ void HuntManager::LoadDefinitions()
         return;
 
     if (QueryResult result = WorldDatabase.Query(
-        "SELECT `id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,`ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`escape_health_pct`,`ambush_count`,`enabled` FROM `hunt_prey` WHERE `enabled`=1"))
+        "SELECT `id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,`ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,`escape_health_pct`,`ambush_count`,`enabled` FROM `hunt_prey` WHERE `enabled`=1"))
     {
         do
         {
@@ -658,14 +659,15 @@ void HuntManager::LoadDefinitions()
             d.Id=f[0].Get<uint32>(); d.Name=f[1].Get<std::string>(); d.MinLevel=f[2].Get<uint8>(); d.MaxLevel=f[3].Get<uint8>();
             d.PreyCreatureEntry=f[4].Get<uint32>(); d.PreyTemplateId=f[5].Get<uint32>(); d.ActivationGameObjectEntry=f[6].Get<uint32>();
             d.AmbushHealthMultiplier=f[7].Get<float>(); d.FinalHealthMultiplier=f[8].Get<float>(); d.RewardMultiplier=std::max(0.0f, f[9].Get<float>()); d.Tier=f[10].Get<uint8>();
-            d.EscapeHealthPct=f[11].Get<uint8>(); d.AmbushCount=f[12].Get<uint8>(); d.Enabled=f[13].Get<uint8>()!=0;
+            d.CombatStyle=f[11].Get<uint8>(); d.PreferredRange=std::max(0.0f, f[12].Get<float>());
+            d.EscapeHealthPct=f[13].Get<uint8>(); d.AmbushCount=f[14].Get<uint8>(); d.Enabled=f[15].Get<uint8>()!=0;
             _hunts[d.Id]=d;
         } while (result->NextRow());
     }
 
     if (QueryResult result = WorldDatabase.Query(
         "SELECT `id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,`chance_pct`,`encounter_mask`,"
-        "`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`require_melee`,`once_per_encounter`,`require_aura_missing`,`enabled` "
+        "`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,`once_per_encounter`,`require_aura_missing`,`enabled` "
         "FROM `hunt_prey_ability` WHERE `enabled`=1 ORDER BY `prey_id`,`id`"))
     {
         do
@@ -677,8 +679,8 @@ void HuntManager::LoadDefinitions()
             d.CooldownMinMs = f[6].Get<uint32>(); d.CooldownMaxMs = f[7].Get<uint32>();
             d.ChancePct = f[8].Get<uint8>(); d.EncounterMask = f[9].Get<uint8>();
             d.MinHunterLevel=f[10].Get<uint8>(); d.MaxHunterLevel=f[11].Get<uint8>(); d.HealthBelowPct=f[12].Get<uint8>();
-            d.RequireMelee=f[13].Get<uint8>()!=0; d.OncePerEncounter=f[14].Get<uint8>()!=0;
-            d.RequireAuraMissing=f[15].Get<uint8>()!=0; d.Enabled = f[16].Get<uint8>() != 0;
+            d.VictimHealthBelowPct=f[13].Get<uint8>(); d.RequireMelee=f[14].Get<uint8>()!=0; d.OncePerEncounter=f[15].Get<uint8>()!=0;
+            d.RequireAuraMissing=f[16].Get<uint8>()!=0; d.Enabled = f[17].Get<uint8>() != 0;
             _preyAbilities[d.PreyId].push_back(d);
         } while (result->NextRow());
     }
@@ -2656,6 +2658,17 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
     if(!finalEncounter){r.AmbushesCompleted++; SaveRuntime(r); ChatHandler(player->GetSession()).PSendSysMessage("|cffff8000[Hunts]|r {} has found YOU! Drive it off!",h->Name);}
     else ChatHandler(player->GetSession()).PSendSysMessage("|cffff0000[Hunts]|r {} emerges for the final confrontation!",h->Name);
     prey->AI()->AttackStart(player);
+
+    // Combat style is prey-authored data. Ranged Elite prey use AzerothCore's
+    // ranged chase generator so they try to maintain casting distance instead
+    // of immediately running into melee like a normal creature AI.
+    if (h->CombatStyle == 1 && h->PreferredRange > 0.0f)
+    {
+        float const minRange = std::max(5.0f, h->PreferredRange * 0.70f);
+        float const maxRange = std::max(minRange + 2.0f, h->PreferredRange * 1.10f);
+        prey->GetMotionMaster()->MoveChase(player, ChaseRange(minRange, maxRange));
+    }
+
     message=finalEncounter?"Final prey spawned.":"Ambush spawned."; return true;
 }
 
@@ -2710,6 +2723,8 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
         if (ability.OncePerEncounter && _abilityUsed[runtime.CharacterGuid][ability.Id])
             continue;
         if (ability.HealthBelowPct && prey->GetHealthPct() > ability.HealthBelowPct)
+            continue;
+        if (ability.VictimHealthBelowPct && player->GetHealthPct() > ability.VictimHealthBelowPct)
             continue;
         if (ability.RequireMelee && !prey->IsWithinMeleeRange(player))
             continue;

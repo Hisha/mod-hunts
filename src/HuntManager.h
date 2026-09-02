@@ -71,7 +71,8 @@ struct HuntPreyAbilityDefinition
     uint8 EncounterMask = 3; // 1=ambush, 2=final, 3=both
     uint8 MinHunterLevel = 1;
     uint8 MaxHunterLevel = 80;
-    uint8 HealthBelowPct = 0; // 0=ignore
+    uint8 HealthBelowPct = 0; // prey/caster health; 0=ignore
+    uint8 VictimHealthBelowPct = 0; // hunter/victim health; 0=ignore
     bool RequireMelee = false;
     bool OncePerEncounter = false;
     bool RequireAuraMissing = false;
@@ -91,6 +92,8 @@ struct HuntDefinition
     float FinalHealthMultiplier = 6.0f;
     float RewardMultiplier = 1.0f;
     uint8 Tier = 1; // 1=normal, 2=elite
+    uint8 CombatStyle = 0; // 0=melee/default, 1=ranged/kiting
+    float PreferredRange = 0.0f; // yards; used by ranged combat style
     uint8 EscapeHealthPct = 50;
     uint8 AmbushCount = 2;
     bool Enabled = false;
