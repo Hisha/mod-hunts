@@ -2271,10 +2271,18 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
     // Health is handled above because Hunt health is explicitly player-relative.
     if (h->Tier == 2)
     {
-        prey->SetModifierValue(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, _eliteDamageMultiplier);
-        prey->SetModifierValue(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, _eliteDamageMultiplier);
-        prey->SetModifierValue(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, _eliteDamageMultiplier);
-        prey->SetModifierValue(UNIT_MOD_ARMOR, TOTAL_PCT, _eliteArmorMultiplier);
+        float const eliteDamagePct = (_eliteDamageMultiplier - 1.0f) * 100.0f;
+        float const eliteArmorPct = (_eliteArmorMultiplier - 1.0f) * 100.0f;
+
+        if (eliteDamagePct != 0.0f)
+        {
+            prey->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, eliteDamagePct, true);
+            prey->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, eliteDamagePct, true);
+            prey->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, eliteDamagePct, true);
+        }
+
+        if (eliteArmorPct != 0.0f)
+            prey->HandleStatModifier(UNIT_MOD_ARMOR, TOTAL_PCT, eliteArmorPct, true);
         prey->UpdateAllStats();
         // UpdateAllStats can recalculate health, so restore the Hunt-owned pool.
         prey->SetMaxHealth(desiredMaxHealth);
