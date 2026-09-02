@@ -1,0 +1,11 @@
+# Hunts - standalone AzerothCore hunting gameplay module
+
+Hunts.Enable = 1
+Hunts.Debug = 1
+Hunts.MinimumLevel = 10
+
+# 0 = Local Region, 1 = Continent, 2 = World
+Hunts.SearchScope = 0
+
+# Completion XP multiplier. Current default preserves existing Hunt tuning.
+Hunts.XPMultiplier = 0.75

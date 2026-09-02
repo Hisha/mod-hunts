@@ -1,0 +1,72 @@
+-- ============================================================================
+-- Hunts Hunt zone catalogue
+-- No faction restrictions exist by design. A zone only becomes assignable when
+-- it also has at least one enabled row in hunt_final_location, preventing a
+-- hunter from receiving a contract that cannot be completed.
+-- Level bands are intentionally server-tunable content, not C++ constants.
+-- ============================================================================
+
+-- Remove any previous catalogue rows for these zone ids. This also replaces the
+-- old Elwynn 10-80 prototype override from 902 with its production level band.
+DELETE FROM `hunt_zone` WHERE `zone_id` IN (1,141,3524,14,215,85,3430,12,3433,40,38,148,3525,130,17,44,406,331,10,11,267,36,400,405,45,33,15,3,8,357,440,47,51,16,4,490,361,46,28,139,618,1377,41,3483,3521,3519,3518,3522,3523,3520,4080,3537,495,65,394,66,3711,2817,67,210);
+INSERT INTO `hunt_zone` (`id`,`zone_id`,`map_id`,`continent_id`,`name`,`min_level`,`max_level`,`weight`,`enabled`,`comment`) VALUES
+(10,1,0,1,'Dun Morogh',10,15,100,1,'Eastern Kingdoms'),
+(11,141,1,2,'Teldrassil',10,15,100,1,'Kalimdor'),
+(12,3524,530,2,'Azuremyst Isle',10,15,100,1,'Outland map - starting island'),
+(13,14,1,2,'Durotar',10,15,100,1,'Kalimdor'),
+(14,215,1,2,'Mulgore',10,15,100,1,'Kalimdor'),
+(15,85,0,1,'Tirisfal Glades',10,15,100,1,'Eastern Kingdoms'),
+(16,3430,530,1,'Eversong Woods',10,15,100,1,'Eastern Kingdoms - BC map'),
+(17,12,0,1,'Elwynn Forest',10,15,100,1,'Eastern Kingdoms'),
+(18,3433,530,1,'Ghostlands',10,20,100,1,'Eastern Kingdoms - BC map'),
+(20,40,0,1,'Westfall',10,20,100,1,'Eastern Kingdoms'),
+(21,38,0,1,'Loch Modan',10,20,100,1,'Eastern Kingdoms'),
+(22,148,1,2,'Darkshore',10,20,100,1,'Kalimdor'),
+(23,3525,530,2,'Bloodmyst Isle',10,20,100,1,'Outland map - starting island'),
+(24,130,0,1,'Silverpine Forest',10,20,100,1,'Eastern Kingdoms'),
+(25,17,1,2,'The Barrens',10,25,100,1,'Kalimdor'),
+(30,44,0,1,'Redridge Mountains',15,25,100,1,'Eastern Kingdoms'),
+(31,406,1,2,'Stonetalon Mountains',15,27,100,1,'Kalimdor'),
+(32,331,1,2,'Ashenvale',18,30,100,1,'Kalimdor'),
+(33,10,0,1,'Duskwood',20,30,100,1,'Eastern Kingdoms'),
+(34,11,0,1,'Wetlands',20,30,100,1,'Eastern Kingdoms'),
+(35,267,0,1,'Hillsbrad Foothills',20,30,100,1,'Eastern Kingdoms'),
+(36,36,0,1,'Alterac Mountains',30,40,100,1,'Eastern Kingdoms'),
+(40,400,1,2,'Thousand Needles',25,35,100,1,'Kalimdor'),
+(41,405,1,2,'Desolace',30,40,100,1,'Kalimdor'),
+(42,45,0,1,'Arathi Highlands',30,40,100,1,'Eastern Kingdoms'),
+(43,33,0,1,'Stranglethorn Vale',30,45,100,1,'Eastern Kingdoms'),
+(44,15,1,2,'Dustwallow Marsh',35,45,100,1,'Kalimdor'),
+(45,3,0,1,'Badlands',35,45,100,1,'Eastern Kingdoms'),
+(46,8,0,1,'Swamp of Sorrows',35,45,100,1,'Eastern Kingdoms'),
+(50,357,1,2,'Feralas',40,50,100,1,'Kalimdor'),
+(51,440,1,2,'Tanaris',40,50,100,1,'Kalimdor'),
+(52,47,0,1,'The Hinterlands',40,50,100,1,'Eastern Kingdoms'),
+(53,51,0,1,'Searing Gorge',43,50,100,1,'Eastern Kingdoms'),
+(54,16,1,2,'Azshara',45,55,100,1,'Kalimdor'),
+(55,4,0,1,'Blasted Lands',45,55,100,1,'Eastern Kingdoms'),
+(56,490,1,2,'Un''Goro Crater',48,55,100,1,'Kalimdor'),
+(57,361,1,2,'Felwood',48,55,100,1,'Kalimdor'),
+(60,46,0,1,'Burning Steppes',50,58,100,1,'Eastern Kingdoms'),
+(61,28,0,1,'Western Plaguelands',50,58,100,1,'Eastern Kingdoms'),
+(62,139,0,1,'Eastern Plaguelands',53,60,100,1,'Eastern Kingdoms'),
+(63,618,1,2,'Winterspring',55,60,100,1,'Kalimdor'),
+(64,1377,1,2,'Silithus',55,60,100,1,'Kalimdor'),
+(65,41,0,1,'Deadwind Pass',55,60,100,1,'Eastern Kingdoms'),
+(70,3483,530,3,'Hellfire Peninsula',58,63,100,1,'Outland'),
+(71,3521,530,3,'Zangarmarsh',60,64,100,1,'Outland'),
+(72,3519,530,3,'Terokkar Forest',62,65,100,1,'Outland'),
+(73,3518,530,3,'Nagrand',64,67,100,1,'Outland'),
+(74,3522,530,3,'Blade''s Edge Mountains',65,68,100,1,'Outland'),
+(75,3523,530,3,'Netherstorm',67,70,100,1,'Outland'),
+(76,3520,530,3,'Shadowmoon Valley',67,70,100,1,'Outland'),
+(77,4080,530,1,'Isle of Quel''Danas',70,70,100,1,'Eastern Kingdoms - BC map'),
+(80,3537,571,4,'Borean Tundra',68,72,100,1,'Northrend'),
+(81,495,571,4,'Howling Fjord',68,72,100,1,'Northrend'),
+(82,65,571,4,'Dragonblight',71,74,100,1,'Northrend'),
+(83,394,571,4,'Grizzly Hills',73,75,100,1,'Northrend'),
+(84,66,571,4,'Zul''Drak',74,77,100,1,'Northrend'),
+(85,3711,571,4,'Sholazar Basin',76,78,100,1,'Northrend'),
+(86,2817,571,4,'Crystalsong Forest',77,80,75,1,'Northrend'),
+(87,67,571,4,'The Storm Peaks',77,80,100,1,'Northrend'),
+(88,210,571,4,'Icecrown',77,80,100,1,'Northrend');
