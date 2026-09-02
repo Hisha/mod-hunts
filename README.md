@@ -124,6 +124,12 @@ Two more class-style Elite prey join the canonical `prebuilt/911_elite_prey.sql`
 
 Druid and Shaman player-resource techniques are triggered by Hunt AI just like the existing Warrior/Rogue techniques, avoiding reliance on player-only rage, energy, mana, stance, or combo-point behavior in creature shells. No schema change is required for 1.0.10.
 
+## 1.0.12-dev - Terrain-safe ranged movement and Death and Decay Grip
+
+- Corrected **The Dusk Confessor** presentation by moving the dynamic template to a normal-rank priest shell while retaining the explicit Elite rank override.
+- Ranged Elite retreat/re-center movement now validates terrain height and MMAP reachability before committing to a destination. Straight-back retreats that would run into walls, cliffs, or broken navigation try alternate escape angles; if no safe point exists, the prey holds position instead of issuing an evade-prone movement order.
+- **The Gravebound** now remembers the center and active window of its most recent Death and Decay. Death Grip becomes immediately eligible when the hunter crosses the edge of that active hazard, so attempting to escape the red circle can trigger the intended pull-back interaction even when the hunter is still relatively close. Ordinary range-based Death Grip remains available as a fallback.
+
 ## 1.0.11-dev - Shadow Priest and Death Knight Elite archetypes
 
 Added two more class-style Elite Hunt prey to the canonical `prebuilt/911_elite_prey.sql` roster:

@@ -297,6 +297,9 @@ private:
     std::unordered_map<uint32, uint32> _fearDrResetTimers;
     std::unordered_map<uint32, uint32> _rogueReopenTimers;
     std::unordered_map<uint32, bool> _druidBearPhase;
+    std::unordered_map<uint32, uint32> _deathAndDecayTimers;
+    std::unordered_map<uint32, float> _deathAndDecayX;
+    std::unordered_map<uint32, float> _deathAndDecayY;
     std::vector<HuntZoneDefinition> _zones;
     std::vector<HuntFinalLocationDefinition> _finalLocations;
     std::unordered_map<uint32, uint32> _giverEntries;

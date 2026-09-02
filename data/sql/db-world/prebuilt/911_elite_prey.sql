@@ -221,14 +221,15 @@ INSERT INTO `hunt_prey_ability`
 
 -- ---------------------------------------------------------------------------
 -- The Dusk Confessor - Shadow Priest archetype
--- High Priestess Mar'li supplies a stock caster shell. Shadowform is applied
+-- Scarlet High Clerist supplies a normal-rank priest shell so the client cannot
+-- inherit boss-class presentation. Shadowform is applied
 -- by the Hunt combat brain at spawn; the rotation layers DoTs, Mind Flay and
 -- Mind Blast with DR-limited Psychic Scream and a final Dispersion defense.
 -- ---------------------------------------------------------------------------
 INSERT INTO `hunt_creature_template`
  (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
   `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
-(1023,'Elite Hunt - The Dusk Confessor',14510,'The Dusk Confessor','Voice Beyond the Veil',14,1,0.95,0.90,1.10,1,
+(1023,'Elite Hunt - The Dusk Confessor',4299,'The Dusk Confessor','Voice Beyond the Veil',14,1,0.95,0.90,1.10,1,
  'Elite Shadow-Priest-style prey; sustained shadow pressure, fear control, and defensive Dispersion.');
 
 INSERT INTO `hunt_prey`

@@ -11,6 +11,7 @@
 #include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectMgr.h"
+#include "PathGenerator.h"
 #include "Item.h"
 #include "ObjectAccessor.h"
 #include "Opcodes.h"
@@ -2728,6 +2729,9 @@ void HuntManager::InitializeAbilityTimers(HuntRuntime const& runtime, bool final
     _fearDrResetTimers.erase(runtime.CharacterGuid);
     _rogueReopenTimers.erase(runtime.CharacterGuid);
     _druidBearPhase.erase(runtime.CharacterGuid);
+    _deathAndDecayTimers.erase(runtime.CharacterGuid);
+    _deathAndDecayX.erase(runtime.CharacterGuid);
+    _deathAndDecayY.erase(runtime.CharacterGuid);
     auto& timers = _abilityTimers[runtime.CharacterGuid];
     timers.clear();
 
@@ -2768,6 +2772,15 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
     HuntDefinition const* hunt = GetDefinition(runtime.PreyId);
     uint8 const encounterBit = runtime.ActivePreyFinal ? 2 : 1;
     float const distance = prey->GetDistance(player);
+
+    // Gravebound remembers the active Death and Decay zone. This lets Death
+    // Grip react to the hunter escaping the hazard instead of acting only as a
+    // generic long-range gap closer.
+    uint32& deathAndDecayTimer = _deathAndDecayTimers[runtime.CharacterGuid];
+    if (deathAndDecayTimer > elapsedMs)
+        deathAndDecayTimer -= elapsedMs;
+    else
+        deathAndDecayTimer = 0;
 
     // Fear uses encounter-local diminishing returns so the Warlock keeps its
     // signature control without repeatedly removing the hunter from play.
@@ -2867,8 +2880,25 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
             continue;
         if (isFear && _fearDrStage[runtime.CharacterGuid] >= 3 && _fearDrResetTimers[runtime.CharacterGuid] > 0)
             continue;
-        if (isDeathGrip && (distance < 8.0f || distance > 30.0f))
-            continue;
+        if (isDeathGrip)
+        {
+            bool escapingDeathAndDecay = false;
+            if (deathAndDecayTimer)
+            {
+                float const dx = player->GetPositionX() - _deathAndDecayX[runtime.CharacterGuid];
+                float const dy = player->GetPositionY() - _deathAndDecayY[runtime.CharacterGuid];
+                // Stock Death and Decay is roughly a 10-yard hazard. Start the
+                // yoink as the hunter clears its edge, even if still close to
+                // the Death Knight.
+                escapingDeathAndDecay = (dx * dx + dy * dy) >= (9.5f * 9.5f);
+            }
+
+            bool const ordinaryGapCloser = distance >= 8.0f && distance <= 30.0f;
+            if (!escapingDeathAndDecay && !ordinaryGapCloser)
+                continue;
+            if (distance > 30.0f)
+                continue;
+        }
         if (isMindFreeze && !player->HasUnitState(UNIT_STATE_CASTING))
             continue;
 
@@ -2914,8 +2944,12 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
                 // Death and Decay is real ground-targeted area denial. Cast it
                 // at the hunter's current position so the stock client renders
                 // the warning circle and the hunter can choose to move out.
-                prey->CastSpell(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(),
-                    ability.SpellId, true);
+                float const dndX = player->GetPositionX();
+                float const dndY = player->GetPositionY();
+                prey->CastSpell(dndX, dndY, player->GetPositionZ(), ability.SpellId, true);
+                _deathAndDecayX[runtime.CharacterGuid] = dndX;
+                _deathAndDecayY[runtime.CharacterGuid] = dndY;
+                _deathAndDecayTimers[runtime.CharacterGuid] = 10000;
             }
             else if (isBlink)
             {
@@ -2989,15 +3023,48 @@ void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creat
         float const softRadius = _rangedArenaRadius;
         float const returnRadius = softRadius * 0.85f;
 
+        auto resolveReachablePoint = [&](float desiredX, float desiredY, float& outX, float& outY, float& outZ) -> bool
+        {
+            Map* map = prey->GetMap();
+            if (!map)
+                return false;
+
+            float groundZ = map->GetHeight(desiredX, desiredY, prey->GetPositionZ() + 10.0f, true, 50.0f);
+            if (groundZ <= INVALID_HEIGHT)
+                return false;
+
+            // Reject cliff-scale vertical jumps before asking MMAP to route it.
+            if (std::fabs(groundZ - prey->GetPositionZ()) > 6.0f)
+                return false;
+
+            PathGenerator path(prey);
+            if (!path.CalculatePath(desiredX, desiredY, groundZ) || (path.GetPathType() & PATHFIND_NOPATH))
+                return false;
+
+            outX = desiredX;
+            outY = desiredY;
+            outZ = groundZ + 0.5f;
+            return true;
+        };
+
+        auto moveReachable = [&](float desiredX, float desiredY) -> bool
+        {
+            float x, y, z;
+            if (!resolveReachablePoint(desiredX, desiredY, x, y, z))
+                return false;
+            prey->GetMotionMaster()->MovePoint(0, x, y, z);
+            return true;
+        };
+
         // If Blink or pathing places the prey near/outside the edge, recovering
         // toward the center takes priority over further kiting. Keep combat live;
         // this is repositioning, not an evade/reset.
         if (homeDistance > returnRadius)
         {
-            float x = home.GetPositionX();
-            float y = home.GetPositionY();
-            float z = home.GetPositionZ();
-            prey->GetMotionMaster()->MovePoint(0, x, y, z);
+            if (moveReachable(home.GetPositionX(), home.GetPositionY()))
+                return;
+            // If even the center is not path-reachable, do not issue a bad
+            // movement order that can cascade into evade. Hold combat here.
             return;
         }
 
@@ -3037,14 +3104,25 @@ void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creat
                 y = home.GetPositionY() + fromHomeY * scale;
             }
 
-            float z = prey->GetPositionZ();
-            if (Map* map = prey->GetMap())
+            if (moveReachable(x, y))
+                return;
+
+            // Straight back can point into a wall or over a cliff. Try angled
+            // retreats on both sides, then a center-biased escape. If none are
+            // reachable, stay put rather than feeding AzerothCore an impossible
+            // destination and risking an evade/reset.
+            float const awayAngle = std::atan2(dy, dx);
+            for (float const offset : { 0.70f, -0.70f, 1.25f, -1.25f })
             {
-                float groundZ = map->GetHeight(x, y, z + 10.0f, true, 50.0f);
-                if (groundZ > INVALID_HEIGHT)
-                    z = groundZ + 0.5f;
+                float const altX = prey->GetPositionX() + std::cos(awayAngle + offset) * (retreatGoal * 0.70f);
+                float const altY = prey->GetPositionY() + std::sin(awayAngle + offset) * (retreatGoal * 0.70f);
+                float const altHomeX = altX - home.GetPositionX();
+                float const altHomeY = altY - home.GetPositionY();
+                if ((altHomeX * altHomeX + altHomeY * altHomeY) <= (returnRadius * returnRadius) && moveReachable(altX, altY))
+                    return;
             }
-            prey->GetMotionMaster()->MovePoint(0, x, y, z);
+
+            moveReachable(home.GetPositionX(), home.GetPositionY());
             return;
         }
 
@@ -3055,7 +3133,7 @@ void HuntManager::UpdatePreyMovement(Player* player, HuntRuntime& runtime, Creat
         float const playerHomeDistance = std::sqrt(playerHomeDx * playerHomeDx + playerHomeDy * playerHomeDy);
         if (playerHomeDistance > softRadius && homeDistance > softRadius * 0.65f)
         {
-            prey->GetMotionMaster()->MovePoint(0, home.GetPositionX(), home.GetPositionY(), home.GetPositionZ());
+            moveReachable(home.GetPositionX(), home.GetPositionY());
             return;
         }
 
