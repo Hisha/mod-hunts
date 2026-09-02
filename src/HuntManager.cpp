@@ -454,13 +454,34 @@ HuntManager& HuntManager::Instance()
     return instance;
 }
 
-void HuntManager::Configure(bool enabled, uint8 minimumLevel, float xpMultiplier, HuntSearchScope searchScope, bool debug)
+void HuntManager::Configure(bool enabled, uint8 minimumLevel, float xpMultiplier, HuntSearchScope searchScope, bool debug,
+    uint32 eliteRequiredNormalCompletions, uint32 eliteDailyLimit, float eliteHealthMultiplier,
+    float eliteDamageMultiplier, float eliteArmorMultiplier, float eliteXpMultiplier, float eliteGoldMultiplier,
+    uint8 eliteSealMinimumLevel, uint32 eliteSealsPerCompletion, uint8 eliteEndgameRewardLevel,
+    uint32 eliteEndgameRewardMinItemLevel, uint32 eliteEndgameRewardMaxItemLevel,
+    uint8 trackingProgressMin, uint8 trackingProgressMax, float groupCreditRadius, float sharedFinalCreditRadius)
 {
     _enabled = enabled;
     _minimumLevel = std::max<uint8>(1, minimumLevel);
     _xpMultiplier = std::max(0.0f, xpMultiplier);
     _searchScope = searchScope;
     _debug = debug;
+    _eliteRequiredNormalCompletions = eliteRequiredNormalCompletions;
+    _eliteDailyLimit = std::max<uint32>(1, eliteDailyLimit);
+    _eliteHealthMultiplier = std::max(0.1f, eliteHealthMultiplier);
+    _eliteDamageMultiplier = std::max(0.1f, eliteDamageMultiplier);
+    _eliteArmorMultiplier = std::max(0.1f, eliteArmorMultiplier);
+    _eliteXpMultiplier = std::max(0.0f, eliteXpMultiplier);
+    _eliteGoldMultiplier = std::max(0.0f, eliteGoldMultiplier);
+    _eliteSealMinimumLevel = std::max<uint8>(1, eliteSealMinimumLevel);
+    _eliteSealsPerCompletion = eliteSealsPerCompletion;
+    _eliteEndgameRewardLevel = std::max<uint8>(1, eliteEndgameRewardLevel);
+    _eliteEndgameRewardMinItemLevel = std::min(eliteEndgameRewardMinItemLevel, eliteEndgameRewardMaxItemLevel);
+    _eliteEndgameRewardMaxItemLevel = std::max(eliteEndgameRewardMinItemLevel, eliteEndgameRewardMaxItemLevel);
+    _trackingProgressMin = std::min(trackingProgressMin, trackingProgressMax);
+    _trackingProgressMax = std::max(trackingProgressMin, trackingProgressMax);
+    _groupCreditRadius = std::max(0.0f, groupCreditRadius);
+    _sharedFinalCreditRadius = std::max(0.0f, sharedFinalCreditRadius);
 }
 
 void HuntManager::Reset()
@@ -912,7 +933,7 @@ bool HuntManager::IsEliteUnlocked(Player const* player) const
         return false;
     if (QueryResult q = CharacterDatabase.Query(
         "SELECT `total_completed` FROM `hunt_stats` WHERE `guid`={}", player->GetGUID().GetCounter()))
-        return q->Fetch()[0].Get<uint32>() >= 10;
+        return q->Fetch()[0].Get<uint32>() >= _eliteRequiredNormalCompletions;
     return false;
 }
 
@@ -923,7 +944,7 @@ bool HuntManager::IsEliteAvailableToday(Player const* player) const
     if (QueryResult q = CharacterDatabase.Query(
         "SELECT IF(`elite_daily_reset_date`=CURRENT_DATE(),`elite_daily_completed`,0) "
         "FROM `hunt_stats` WHERE `guid`={}", player->GetGUID().GetCounter()))
-        return q->Fetch()[0].Get<uint32>() == 0;
+        return q->Fetch()[0].Get<uint32>() < _eliteDailyLimit;
     return true;
 }
 
@@ -933,7 +954,7 @@ bool HuntManager::RequestEliteHunt(Player* player, Creature* giver, std::string&
     if(!player||!giver||!IsHuntGiver(giver->GetEntry())){message="That creature is not a Living World Huntmaster.";return false;}
     if(player->GetLevel()<_minimumLevel){message="You are not yet ready for an Elite Hunt.";return false;}
     if(HasActiveHunt(player)){message="You already have an active hunt.";return false;}
-    if(!IsEliteUnlocked(player)){message="Elite Hunts unlock after 10 completed normal hunts.";return false;}
+    if(!IsEliteUnlocked(player)){message="Elite Hunts unlock after "+std::to_string(_eliteRequiredNormalCompletions)+" completed normal hunts.";return false;}
     if(!IsEliteAvailableToday(player)){message="You have already completed an Elite Hunt today. Return tomorrow for another challenge.";return false;}
 
     std::vector<HuntDefinition const*> eligible;
@@ -977,6 +998,8 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     HuntDefinition const* hunt = GetDefinition(r.PreyId);
     float rewardMultiplier = hunt ? hunt->RewardMultiplier : 1.0f;
     bool const eliteHunt = hunt && hunt->Tier == 2;
+    float const eliteXpRewardMultiplier = eliteHunt ? _eliteXpMultiplier : 1.0f;
+    float const eliteGoldRewardMultiplier = eliteHunt ? _eliteGoldMultiplier : 1.0f;
 
     // Determine how many hunts were already completed today before this turn-in.
     // Reward quality deliberately diminishes across repeated same-day hunts.
@@ -992,7 +1015,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     if (player->GetLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL) && _xpMultiplier > 0.0f)
     {
         uint32 nextLevelXp = player->GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
-        xpReward = static_cast<uint32>(std::round(nextLevelXp * 0.08f * _xpMultiplier * rewardMultiplier));
+        xpReward = static_cast<uint32>(std::round(nextLevelXp * 0.08f * _xpMultiplier * rewardMultiplier * eliteXpRewardMultiplier));
         if (xpReward)
             player->GiveXP(xpReward, nullptr, 1.0f);
     }
@@ -1000,7 +1023,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     // Gold scales quadratically with level: 20 copper * level^2 at 1.0x.
     // Examples: level 10 = 20s, level 40 = 3g20s, level 80 = 12g80s.
     uint32 level = player->GetLevel();
-    uint32 moneyReward = static_cast<uint32>(std::round(20.0f * level * level * rewardMultiplier));
+    uint32 moneyReward = static_cast<uint32>(std::round(20.0f * level * level * rewardMultiplier * eliteGoldRewardMultiplier));
     if (moneyReward)
         player->ModifyMoney(static_cast<int32>(moneyReward));
 
@@ -1008,7 +1031,8 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     // progressively suppress high-quality rewards without removing item rewards.
     uint32 qualityRoll = urand(1, 1000);
     uint32 desiredQuality = ITEM_QUALITY_UNCOMMON;
-    bool const levelCapElite = eliteHunt && level >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+    bool const levelCapElite = eliteHunt && level >= _eliteEndgameRewardLevel;
+    bool const sealEligible = eliteHunt && level >= _eliteSealMinimumLevel && _eliteSealsPerCompletion > 0;
     if (levelCapElite)
         desiredQuality = ITEM_QUALITY_EPIC; // level-cap Elite: entry 10-player raid gear (ilvl 200)
     else if (eliteHunt)
@@ -1054,7 +1078,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         // At level cap an Elite Hunt's immediate equipment reward is deliberately
         // limited to entry-level 10-player Wrath raid gear. Higher progression
         // comes from saved Huntmaster's Seals rather than jackpot RNG.
-        if (levelCapElite && itemTemplate.ItemLevel != 200)
+        if (levelCapElite && (itemTemplate.ItemLevel < _eliteEndgameRewardMinItemLevel || itemTemplate.ItemLevel > _eliteEndgameRewardMaxItemLevel))
             continue;
 
         if (player->CanUseItem(&itemTemplate) != EQUIP_ERR_OK)
@@ -1122,7 +1146,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
              << (qualityColumn && std::string(qualityColumn)=="blues_received" ? 1 : 0) << ","
              << (qualityColumn && std::string(qualityColumn)=="epics_received" ? 1 : 0) << ","
              << (eliteHunt ? 1 : 0) << "," << (eliteHunt ? 1 : 0) << ","
-             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << (levelCapElite ? 1 : 0) << ",CURRENT_TIMESTAMP()) "
+             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << (sealEligible ? _eliteSealsPerCompletion : 0) << ",CURRENT_TIMESTAMP()) "
              << "ON DUPLICATE KEY UPDATE `total_completed`=`total_completed`+1, "
              << "`daily_completed`=IF(`daily_reset_date`=CURRENT_DATE(),`daily_completed`+1,1), "
              << "`daily_reset_date`=CURRENT_DATE(),";
@@ -1130,8 +1154,8 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         statsSql << "`elite_total_completed`=`elite_total_completed`+1,"
                  << "`elite_daily_completed`=IF(`elite_daily_reset_date`=CURRENT_DATE(),`elite_daily_completed`+1,1),"
                  << "`elite_daily_reset_date`=CURRENT_DATE(),";
-    if (levelCapElite)
-        statsSql << "`huntmaster_seals`=`huntmaster_seals`+1,";
+    if (sealEligible)
+        statsSql << "`huntmaster_seals`=`huntmaster_seals`+" << _eliteSealsPerCompletion << ",";
     if (qualityColumn)
         statsSql << "`" << qualityColumn << "`=`" << qualityColumn << "`+1,";
     statsSql << "`last_completed_at`=CURRENT_TIMESTAMP()";
@@ -1150,13 +1174,13 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         rewardMessage << ". No suitable item reward was found for this level/quality roll";
     else
         rewardMessage << ". Your bags were too full for the item reward";
-    if (levelCapElite)
+    if (sealEligible)
     {
-        uint32 sealBalance = 1;
+        uint32 sealBalance = _eliteSealsPerCompletion;
         if (QueryResult seals = CharacterDatabase.Query(
             "SELECT `huntmaster_seals` FROM `hunt_stats` WHERE `guid`={}", r.CharacterGuid))
             sealBalance = seals->Fetch()[0].Get<uint32>();
-        rewardMessage << ", and 1 Huntmaster's Seal (" << sealBalance << " total)";
+        rewardMessage << ", and " << _eliteSealsPerCompletion << " Huntmaster's Seal" << (_eliteSealsPerCompletion == 1 ? "" : "s") << " (" << sealBalance << " total)";
     }
     rewardMessage << ".";
 
@@ -1250,7 +1274,7 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
                     continue;
 
                 // Do not grant remote group credit from across the map.
-                if (!isOwner && hunter->GetDistance(killed) > 200.0f)
+                if (!isOwner && hunter->GetDistance(killed) > _sharedFinalCreditRadius)
                     continue;
 
                 _abilityTimers.erase(runtime.CharacterGuid);
@@ -1317,7 +1341,7 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
         if (hunter->GetMapId() != killed->GetMapId() || hunter->GetZoneId() != runtime.ZoneId)
             continue;
 
-        if (hunter->GetDistance(killed) > 100.0f)
+        if (hunter->GetDistance(killed) > _groupCreditRadius)
             continue;
 
         // Ordinary tracking progress only comes from creatures that are non-grey
@@ -1327,7 +1351,7 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
             continue;
 
         std::string ignored;
-        AddProgress(hunter, static_cast<uint8>(urand(3, 7)), ignored);
+        AddProgress(hunter, static_cast<uint8>(urand(_trackingProgressMin, _trackingProgressMax)), ignored);
     }
 }
 
@@ -2234,13 +2258,28 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
 
     float const baseMultiplier = finalEncounter ? h->FinalHealthMultiplier : h->AmbushHealthMultiplier;
     float const levelScale = finalEncounter ? finalScale : ambushScale;
-    float const healthMultiplier = std::max(1.0f, baseMultiplier * levelScale);
+    float const eliteGlobalHealth = h->Tier == 2 ? _eliteHealthMultiplier : 1.0f;
+    float const healthMultiplier = std::max(1.0f, baseMultiplier * levelScale * eliteGlobalHealth);
     uint64 const playerScaledHealth = static_cast<uint64>(healthMultiplier * player->GetMaxHealth());
     // The elite flag remains presentation/identity; hunt difficulty owns the health pool.
     // Do not let the cloned elite template's derived health override our hunt scaling.
     uint32 const desiredMaxHealth = static_cast<uint32>(std::min<uint64>(std::numeric_limits<uint32>::max(), playerScaledHealth));
     prey->SetMaxHealth(desiredMaxHealth);
     prey->SetFullHealth();
+
+    // Global Elite difficulty knobs stack on top of each prey's database tuning.
+    // Health is handled above because Hunt health is explicitly player-relative.
+    if (h->Tier == 2)
+    {
+        prey->SetModifierValue(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, _eliteDamageMultiplier);
+        prey->SetModifierValue(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, _eliteDamageMultiplier);
+        prey->SetModifierValue(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, _eliteDamageMultiplier);
+        prey->SetModifierValue(UNIT_MOD_ARMOR, TOTAL_PCT, _eliteArmorMultiplier);
+        prey->UpdateAllStats();
+        // UpdateAllStats can recalculate health, so restore the Hunt-owned pool.
+        prey->SetMaxHealth(desiredMaxHealth);
+        prey->SetFullHealth();
+    }
 
     r.ActivePreyGuid=prey->GetGUID(); r.ActivePreyFinal=finalEncounter;
     InitializeAbilityTimers(r, finalEncounter);

@@ -51,10 +51,15 @@ Elite Hunt prey are class-style opponents rather than dungeon bosses. Elite-deri
 Elite prey currently use encounter-local stun diminishing returns: the first stun has full duration, the second is 50%, the third is 25%, and further stuns are immune until 15 seconds after the previous stun expires. This is implemented as Elite Hunt combat behavior and is intended to expand to additional crowd-control categories as more Elite archetypes are added.
 
 
-## Elite Hunt progression (1.0.2-dev)
+## Elite Hunt progression (1.0.3-dev)
 
 **Huntmaster's Seals are level-80 progression only.** Elite Hunts completed below level 80 award XP, gold, and strong level-appropriate rare equipment, but never raid-tier epic gear and never a Huntmaster's Seal. Reaching level 80 does not retroactively award Seals for earlier Elite Hunts.
 
 At level 80, each successful Elite Hunt awards one virtual **Huntmaster's Seal**. Seals are stored per character in `hunt_stats`, consume no bag space, and require no client/DBC patch. The Huntmaster hunting record displays the Seal balance only for level-80 characters.
 
 At level 80, the immediate Elite Hunt equipment reward is capped at item level 200 epic weapon/armor appropriate for the active spec (entry-level Wrath 10-player raid power). Higher-tier, player-selected main-spec or off-spec equipment is intended to be purchased with accumulated Huntmaster's Seals rather than awarded by unrestricted random rolls.
+
+
+## 1.0.3-dev - Admin tuning layer
+
+Balance-sensitive server policy is now exposed through `mod_hunts.conf`: Elite unlock/daily limit, global Elite health/damage/armor, Elite XP/gold, Seal level/count, endgame reward level/item-level band, tracking gain, and group/shared-final credit radii. Per-prey identity and ability tuning remains data-driven in SQL; global config multipliers stack on top.

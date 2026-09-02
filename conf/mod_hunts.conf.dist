@@ -7,5 +7,49 @@ Hunts.MinimumLevel = 10
 # 0 = Local Region, 1 = Continent, 2 = World
 Hunts.SearchScope = 0
 
-# Completion XP multiplier. Current default preserves existing Hunt tuning.
+# Completion XP multiplier for all Hunts. Default preserves current tuning.
 Hunts.XPMultiplier = 0.75
+
+# ----------------------------------------------------------
+# Tracking / group credit
+# ----------------------------------------------------------
+# Random tracking progress awarded for a qualifying ordinary kill.
+Hunts.Tracking.ProgressMin = 3
+Hunts.Tracking.ProgressMax = 7
+
+# Same-hunt group members must be within this many yards for ordinary kill credit.
+Hunts.GroupCreditRadius = 100.0
+
+# Same-final group members must be within this many yards for shared final credit.
+Hunts.SharedFinalCreditRadius = 200.0
+
+# ----------------------------------------------------------
+# Elite Hunts
+# ----------------------------------------------------------
+# Completed normal Hunts required before Elite Hunts unlock.
+Hunts.Elite.RequiredNormalCompletions = 10
+
+# Successful Elite Hunt turn-ins allowed per character per day.
+Hunts.Elite.DailyLimit = 1
+
+# Global difficulty multipliers applied on top of each Elite prey's DB tuning.
+# 1.0 = authored/default difficulty. Example hard server: 1.75 / 1.35 / 1.20.
+Hunts.Elite.HealthMultiplier = 1.0
+Hunts.Elite.DamageMultiplier = 1.0
+Hunts.Elite.ArmorMultiplier = 1.0
+
+# Additional Elite-only reward multipliers. These stack with Hunts.XPMultiplier
+# and the individual prey reward_multiplier from hunt_prey.
+Hunts.Elite.XPMultiplier = 1.0
+Hunts.Elite.GoldMultiplier = 1.0
+
+# Huntmaster's Seals are endgame progression currency. Characters below this
+# level never receive Seals, even when they complete an Elite Hunt.
+Hunts.Elite.SealMinimumLevel = 80
+Hunts.Elite.SealsPerCompletion = 1
+
+# At this level, Elite random gear switches to the configured endgame item-level
+# band. Defaults to entry-level Wrath 10-player raid gear only.
+Hunts.Elite.EndgameRewardLevel = 80
+Hunts.Elite.EndgameRewardMinItemLevel = 200
+Hunts.Elite.EndgameRewardMaxItemLevel = 200

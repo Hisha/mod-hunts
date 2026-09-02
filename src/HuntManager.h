@@ -135,7 +135,12 @@ class HuntManager
 public:
     static HuntManager& Instance();
 
-    void Configure(bool enabled, uint8 minimumLevel, float xpMultiplier, HuntSearchScope searchScope, bool debug);
+    void Configure(bool enabled, uint8 minimumLevel, float xpMultiplier, HuntSearchScope searchScope, bool debug,
+        uint32 eliteRequiredNormalCompletions, uint32 eliteDailyLimit, float eliteHealthMultiplier,
+        float eliteDamageMultiplier, float eliteArmorMultiplier, float eliteXpMultiplier, float eliteGoldMultiplier,
+        uint8 eliteSealMinimumLevel, uint32 eliteSealsPerCompletion, uint8 eliteEndgameRewardLevel,
+        uint32 eliteEndgameRewardMinItemLevel, uint32 eliteEndgameRewardMaxItemLevel,
+        uint8 trackingProgressMin, uint8 trackingProgressMax, float groupCreditRadius, float sharedFinalCreditRadius);
     void Reset();
     void LoadDefinitions();
     void Initialize();
@@ -207,6 +212,22 @@ private:
     uint8 _minimumLevel = 10;
     float _xpMultiplier = 0.75f;
     HuntSearchScope _searchScope = HuntSearchScope::World;
+    uint32 _eliteRequiredNormalCompletions = 10;
+    uint32 _eliteDailyLimit = 1;
+    float _eliteHealthMultiplier = 1.0f;
+    float _eliteDamageMultiplier = 1.0f;
+    float _eliteArmorMultiplier = 1.0f;
+    float _eliteXpMultiplier = 1.0f;
+    float _eliteGoldMultiplier = 1.0f;
+    uint8 _eliteSealMinimumLevel = 80;
+    uint32 _eliteSealsPerCompletion = 1;
+    uint8 _eliteEndgameRewardLevel = 80;
+    uint32 _eliteEndgameRewardMinItemLevel = 200;
+    uint32 _eliteEndgameRewardMaxItemLevel = 200;
+    uint8 _trackingProgressMin = 3;
+    uint8 _trackingProgressMax = 7;
+    float _groupCreditRadius = 100.0f;
+    float _sharedFinalCreditRadius = 200.0f;
     uint32 _updateTimerMs = 0;
     uint32 _finalPoiRefreshTimerMs = 0;
 

@@ -23,6 +23,22 @@ enum class HuntsConfig
     MinimumLevel,
     XpMultiplier,
     SearchScope,
+    EliteRequiredNormalCompletions,
+    EliteDailyLimit,
+    EliteHealthMultiplier,
+    EliteDamageMultiplier,
+    EliteArmorMultiplier,
+    EliteXpMultiplier,
+    EliteGoldMultiplier,
+    EliteSealMinimumLevel,
+    EliteSealsPerCompletion,
+    EliteEndgameRewardLevel,
+    EliteEndgameRewardMinItemLevel,
+    EliteEndgameRewardMaxItemLevel,
+    TrackingProgressMin,
+    TrackingProgressMax,
+    GroupCreditRadius,
+    SharedFinalCreditRadius,
     Count
 };
 
@@ -37,6 +53,22 @@ public:
         SetConfigValue<uint32>(HuntsConfig::MinimumLevel, "Hunts.MinimumLevel", 10);
         SetConfigValue<float>(HuntsConfig::XpMultiplier, "Hunts.XPMultiplier", 0.75f);
         SetConfigValue<uint32>(HuntsConfig::SearchScope, "Hunts.SearchScope", 0);
+        SetConfigValue<uint32>(HuntsConfig::EliteRequiredNormalCompletions, "Hunts.Elite.RequiredNormalCompletions", 10);
+        SetConfigValue<uint32>(HuntsConfig::EliteDailyLimit, "Hunts.Elite.DailyLimit", 1);
+        SetConfigValue<float>(HuntsConfig::EliteHealthMultiplier, "Hunts.Elite.HealthMultiplier", 1.0f);
+        SetConfigValue<float>(HuntsConfig::EliteDamageMultiplier, "Hunts.Elite.DamageMultiplier", 1.0f);
+        SetConfigValue<float>(HuntsConfig::EliteArmorMultiplier, "Hunts.Elite.ArmorMultiplier", 1.0f);
+        SetConfigValue<float>(HuntsConfig::EliteXpMultiplier, "Hunts.Elite.XPMultiplier", 1.0f);
+        SetConfigValue<float>(HuntsConfig::EliteGoldMultiplier, "Hunts.Elite.GoldMultiplier", 1.0f);
+        SetConfigValue<uint32>(HuntsConfig::EliteSealMinimumLevel, "Hunts.Elite.SealMinimumLevel", 80);
+        SetConfigValue<uint32>(HuntsConfig::EliteSealsPerCompletion, "Hunts.Elite.SealsPerCompletion", 1);
+        SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardLevel, "Hunts.Elite.EndgameRewardLevel", 80);
+        SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMinItemLevel, "Hunts.Elite.EndgameRewardMinItemLevel", 200);
+        SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMaxItemLevel, "Hunts.Elite.EndgameRewardMaxItemLevel", 200);
+        SetConfigValue<uint32>(HuntsConfig::TrackingProgressMin, "Hunts.Tracking.ProgressMin", 3);
+        SetConfigValue<uint32>(HuntsConfig::TrackingProgressMax, "Hunts.Tracking.ProgressMax", 7);
+        SetConfigValue<float>(HuntsConfig::GroupCreditRadius, "Hunts.GroupCreditRadius", 100.0f);
+        SetConfigValue<float>(HuntsConfig::SharedFinalCreditRadius, "Hunts.SharedFinalCreditRadius", 200.0f);
     }
 };
 
@@ -73,7 +105,23 @@ public:
             static_cast<uint8>(huntsConfig.GetConfigValue<uint32>(HuntsConfig::MinimumLevel)),
             huntsConfig.GetConfigValue<float>(HuntsConfig::XpMultiplier),
             static_cast<hunts::HuntSearchScope>(std::min<uint32>(2, huntsConfig.GetConfigValue<uint32>(HuntsConfig::SearchScope))),
-            huntsConfig.GetConfigValue<bool>(HuntsConfig::Debug));
+            huntsConfig.GetConfigValue<bool>(HuntsConfig::Debug),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteRequiredNormalCompletions),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteDailyLimit),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteHealthMultiplier),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteDamageMultiplier),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteArmorMultiplier),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteXpMultiplier),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteGoldMultiplier),
+            static_cast<uint8>(std::min<uint32>(255, huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteSealMinimumLevel))),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteSealsPerCompletion),
+            static_cast<uint8>(std::min<uint32>(255, huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardLevel))),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMinItemLevel),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMaxItemLevel),
+            static_cast<uint8>(std::min<uint32>(100, huntsConfig.GetConfigValue<uint32>(HuntsConfig::TrackingProgressMin))),
+            static_cast<uint8>(std::min<uint32>(100, huntsConfig.GetConfigValue<uint32>(HuntsConfig::TrackingProgressMax))),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::GroupCreditRadius),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::SharedFinalCreditRadius));
         sHuntMgr.LoadDefinitions();
         LOG_INFO("server.loading", "Hunts module configured.");
     }
