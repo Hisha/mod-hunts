@@ -149,6 +149,7 @@ public:
     bool HasActiveHunt(Player const* player) const;
     HuntRuntime const* GetRuntime(Player const* player) const;
     HuntDefinition const* GetDefinition(uint32 preyId) const;
+    bool IsElitePreyEntry(uint32 creatureEntry) const;
 
     bool RequestHunt(Player* player, Creature* giver, std::string& message);
     bool RequestEliteHunt(Player* player, Creature* giver, std::string& message);

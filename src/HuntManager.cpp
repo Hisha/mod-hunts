@@ -432,6 +432,22 @@ float ScoreRewardItem(Player* player, uint32 spec, RewardRole role, ItemTemplate
 
 namespace hunts
 {
+
+bool HuntManager::IsElitePreyEntry(uint32 creatureEntry) const
+{
+    if (!creatureEntry)
+        return false;
+
+    for (auto const& [preyId, hunt] : _hunts)
+    {
+        (void)preyId;
+        if (hunt.Enabled && hunt.Tier >= 2 && ResolvePreyEntry(hunt) == creatureEntry)
+            return true;
+    }
+
+    return false;
+}
+
 HuntManager& HuntManager::Instance()
 {
     static HuntManager instance;

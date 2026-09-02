@@ -43,3 +43,9 @@ Standalone commands are rooted at `.hunt` instead of `.lw hunt`, for example:
 
 ## 1.0.0-dev fork point
 Forked from the working Living World 0.7.0-dev Hunt implementation after the first successful Elite Hunt test. Normal Hunt tuning/content and Elite Hunt behavior are preserved while removing all runtime/module dependency on mod-living-world.
+
+### Elite Hunt crowd control
+
+Elite Hunt prey are class-style opponents rather than dungeon bosses. Elite-derived creature templates therefore do not inherit blanket `CreatureImmunitiesId` crowd-control immunity from their visual/base creature.
+
+Elite prey currently use encounter-local stun diminishing returns: the first stun has full duration, the second is 50%, the third is 25%, and further stuns are immune until 15 seconds after the previous stun expires. This is implemented as Elite Hunt combat behavior and is intended to expand to additional crowd-control categories as more Elite archetypes are added.
