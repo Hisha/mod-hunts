@@ -95,51 +95,11 @@ INSERT INTO `hunt_giver` (`id`,`creature_entry`,`city_name`,`map_id`,`continent_
 (9,@SH_ENTRY,'Shattrath City',530,3,-2019.2322,5203.5225,-35.69525,1,'Neutral Outland hub Huntmaster'),
 (10,@DA_ENTRY,'Dalaran',571,4,5773.8013,548.9488,651.6386,1,'Neutral Northrend hub Huntmaster');
 
--- Native MerchantFrame Seal-price presentation test inventory.
+-- Huntmasters carry the vendor NPC flag for HuntsUI's native MerchantFrame,
+-- but their Seal inventory is generated per character/spec by mod-hunts.
+-- Remove obsolete proof-of-concept static vendor rows if this file is reapplied.
 DELETE FROM `npc_vendor`
 WHERE `entry` IN (@SW_ENTRY,@IF_ENTRY,@DN_ENTRY,@EX_ENTRY,@OG_ENTRY,@TB_ENTRY,@UC_ENTRY,@SM_ENTRY,@SH_ENTRY,@DA_ENTRY);
-
-INSERT INTO `npc_vendor` (`entry`,`slot`,`item`,`maxcount`,`incrtime`,`ExtendedCost`,`VerifiedBuild`) VALUES
-(@SW_ENTRY,0,40499,0,0,0,0),
-(@SW_ENTRY,1,40569,0,0,0,0),
-(@SW_ENTRY,2,40574,0,0,0,0),
-(@SW_ENTRY,3,40575,0,0,0,0),
-(@IF_ENTRY,0,40499,0,0,0,0),
-(@IF_ENTRY,1,40569,0,0,0,0),
-(@IF_ENTRY,2,40574,0,0,0,0),
-(@IF_ENTRY,3,40575,0,0,0,0),
-(@DN_ENTRY,0,40499,0,0,0,0),
-(@DN_ENTRY,1,40569,0,0,0,0),
-(@DN_ENTRY,2,40574,0,0,0,0),
-(@DN_ENTRY,3,40575,0,0,0,0),
-(@EX_ENTRY,0,40499,0,0,0,0),
-(@EX_ENTRY,1,40569,0,0,0,0),
-(@EX_ENTRY,2,40574,0,0,0,0),
-(@EX_ENTRY,3,40575,0,0,0,0),
-(@OG_ENTRY,0,40499,0,0,0,0),
-(@OG_ENTRY,1,40569,0,0,0,0),
-(@OG_ENTRY,2,40574,0,0,0,0),
-(@OG_ENTRY,3,40575,0,0,0,0),
-(@TB_ENTRY,0,40499,0,0,0,0),
-(@TB_ENTRY,1,40569,0,0,0,0),
-(@TB_ENTRY,2,40574,0,0,0,0),
-(@TB_ENTRY,3,40575,0,0,0,0),
-(@UC_ENTRY,0,40499,0,0,0,0),
-(@UC_ENTRY,1,40569,0,0,0,0),
-(@UC_ENTRY,2,40574,0,0,0,0),
-(@UC_ENTRY,3,40575,0,0,0,0),
-(@SM_ENTRY,0,40499,0,0,0,0),
-(@SM_ENTRY,1,40569,0,0,0,0),
-(@SM_ENTRY,2,40574,0,0,0,0),
-(@SM_ENTRY,3,40575,0,0,0,0),
-(@SH_ENTRY,0,40499,0,0,0,0),
-(@SH_ENTRY,1,40569,0,0,0,0),
-(@SH_ENTRY,2,40574,0,0,0,0),
-(@SH_ENTRY,3,40575,0,0,0,0),
-(@DA_ENTRY,0,40499,0,0,0,0),
-(@DA_ENTRY,1,40569,0,0,0,0),
-(@DA_ENTRY,2,40574,0,0,0,0),
-(@DA_ENTRY,3,40575,0,0,0,0);
 
 DELETE FROM `hunt_guard_locator` WHERE `id` BETWEEN 1 AND 14;
 INSERT INTO `hunt_guard_locator` (`id`,`guard_creature_entry`,`hunt_giver_id`,`enabled`,`comment`) VALUES

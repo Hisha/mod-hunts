@@ -1,32 +1,57 @@
 # mod-hunts
 
-Standalone AzerothCore WotLK Hunt system. No other custom module is required.
+Standalone Hunt gameplay module for AzerothCore WotLK 3.3.5a. No other custom server module is required and no client patch/MPQ is used.
 
 ## Features
 - Repeatable normal Hunts from level 10 through 80.
-- Elite Hunts unlock after 10 completed Hunts; accepting an Elite consumes that day's assignment, so abandoning cannot reroll the prey.
-- Levels 10-79 remain group-friendly; max-level Elite final completion is solo.
-- Huntmasters in capital cities and guard-direction integration.
-- Zone tracking, ambushes, authored final locations, map POI refresh, activation crystal and final prey.
-- Level-aware final-location selection and in-game authoring/report/export tools.
-- Spec-aware existing-item rewards.
-- Data-driven prey abilities including level gates, health triggers, melee requirements, once-per-encounter and aura checks.
+- Elite Hunts unlock after configurable normal-Hunt progression and use a per-character daily assignment limit.
+- Huntmasters in major capitals/hubs with stock guard-direction integration.
+- Zone tracking, required ambush encounters, authored final locations, map POI guidance, activation crystal, and final prey encounter.
+- Group-friendly normal Hunt progression with configurable nearby credit.
+- Data-driven normal and Elite prey, including class-style Elite combat brains and authored abilities.
+- Level-aware and spec-aware equipment rewards.
+- Level-80 Huntmaster's Seal progression with configurable reward tiers.
+- Full server-side Seal-store fallback for stock clients.
+- Optional **HuntsUI** companion addon using Blizzard's real MerchantFrame, native item rows/tooltips/paging, spec switching, Seal prices, and Seal balance.
 - Self-contained dynamic creature-template materialization for Hunt prey.
+- In-game Hunt authoring, validation, final-location coverage reporting, and export tools.
+
+## Requirements
+- AzerothCore WotLK / WoW 3.3.5a.
+- MySQL/MariaDB as required by AzerothCore.
+- No dependency on `mod-living-world`.
+- No client patch is required.
+- HuntsUI is optional. HuntsUI 1.0.1 or newer is recommended for the graphical Huntmaster Seal store.
+
+## Installation
+1. Place `mod-hunts` in your AzerothCore `modules` directory.
+2. Apply the SQL under `data/sql/db-world/base` to the world database.
+3. Apply the SQL under `data/sql/db-characters/base` to the characters database.
+4. Apply `data/sql/db-world/prebuilt` in numeric order.
+5. Copy `conf/mod_hunts.conf.dist` through the normal AzerothCore module configuration process and adjust the `Hunts.*` settings as desired.
+6. Re-run CMake/configuration if required by your AzerothCore build, compile, and restart the realm.
+
+The canonical base/prebuilt SQL represents the complete current 1.0-era schema/content. Very early development installs that predate the standalone repository should be treated as development conversions: back up the databases and reconcile/reload the canonical `hunt_*` schema/content rather than relying on old `lw_hunt_*` tables.
+
+## Huntmaster's Seal store
+Huntmaster's Seals are virtual per-character progression currency stored by the server; they consume no bag space and require no DBC/client patch.
+
+Without HuntsUI, selecting **Huntmaster's Seal rewards** opens the complete server-side gossip store with specialization, tier, slot, item, and confirmation steps.
+
+With HuntsUI installed, the addon announces itself for the login session. The same gossip option opens Blizzard's native MerchantFrame. `mod-hunts` generates the catalog per character/spec, validates every purchase, deducts Seals, creates the item, and enforces soulbinding. HuntsUI is presentation/interaction only and cannot grant items or choose prices.
 
 ## Configuration
-Copy `conf/mod_hunts.conf.dist` through the normal AzerothCore module configuration process. Settings use only the `Hunts.*` namespace.
+Copy `conf/mod_hunts.conf.dist` through the normal AzerothCore module configuration process. All settings use the `Hunts.*` namespace. `Hunts.Debug` defaults to `0`; enable it only when using the in-game authoring/debug commands.
 
-## Database
-This first standalone development release intentionally uses a clean canonical schema, not the old `lw_hunt_*` names. The module owns:
-- world: `hunt_*` and `hunt_creature_template*` tables
-- characters: `hunt_runtime`, `hunt_stats`
-
-For a clean development conversion from the Living World Hunt subsystem, remove the old Hunt-only tables after confirming the new module is working. Do not remove `lw_creature_template*` if Living World still uses them for invasions/travelers.
-
-Load world base SQL first, character base SQL second, then the Hunt prebuilt SQL files in numeric order.
+Important groups include:
+- `Hunts.MinimumLevel`, `Hunts.SearchScope`, and `Hunts.XPMultiplier`
+- tracking/group-credit settings
+- Elite unlock, daily limit, difficulty, rewards, and ranged-combat tuning
+- Huntmaster Seal reward level/count
+- four configurable Seal-store item-level/cost tiers
 
 ## Commands
-Standalone commands are rooted at `.hunt` instead of `.lw hunt`, for example:
+Commands are rooted at `.hunt`:
 - `.hunt status`
 - `.hunt progress <amount>`
 - `.hunt ambush`
@@ -40,6 +65,8 @@ Standalone commands are rooted at `.hunt` instead of `.lw hunt`, for example:
 - `.hunt set final levels <id> auto`
 - `.hunt set final goto <id>`
 - `.hunt set final delete <id>`
+
+Authoring commands require `Hunts.Debug = 1`.
 
 ## 1.0.0-dev fork point
 Forked from the working Living World 0.7.0-dev Hunt implementation after the first successful Elite Hunt test. Normal Hunt tuning/content and Elite Hunt behavior are preserved while removing all runtime/module dependency on mod-living-world.
@@ -174,6 +201,14 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.24-dev - Release cleanup and stock-client fallback
+- Restored the intended optional-addon behavior for Huntmaster Seal rewards. HuntsUI sessions use the native dynamic MerchantFrame catalog; clients without HuntsUI remain in the complete server-side gossip store.
+- Removed the four static Wrath gear rows used only during the MerchantFrame proof-of-concept. Huntmasters retain the vendor NPC flag, while their graphical inventory is generated dynamically per character/spec.
+- Removed the obsolete `PING/PONG` transport diagnostic and the superseded custom-window `LIST` / `BUY` addon protocol. The shipping graphical store uses `HELLO`, `OPEN`, `CATALOG`, and `BUYITEM`.
+- Changed the distributed `Hunts.Debug` default from `1` to production-safe `0`.
+- Refreshed the repository README around the current standalone module, installation flow, optional HuntsUI architecture, Seal-store behavior, and canonical SQL policy.
+- HuntsUI 1.0.1 adds the login `HELLO` announcement used to distinguish graphical-store clients from stock/no-addon clients.
+
 ### 1.0.23-dev
 - Added explicit Seal-store weapon/off-hand/ranged/relic filtering for all ten Wrath classes and every talent specialization.
 - Warriors now distinguish Arms, Fury, and Protection weapon/off-hand rules; Hunters receive physical ranged weapons; Rogues receive appropriate one-hand plus physical ranged/thrown choices.
@@ -198,10 +233,7 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 - The native merchant packet's price field carries the virtual Seal cost so HuntsUI can render correct configured prices without maintaining a second price table.
 
 ### 1.0.20-dev
-- Switched HuntsUI rewards to AzerothCore's real merchant pipeline and Blizzard's stock `MerchantFrame`.
-- Huntmasters are gossip+vendor NPCs with four stock Wrath gear rows for the Seal-price presentation test.
-- Selecting Seal rewards closes gossip and sends native vendor inventory.
-- Seal purchasing is deliberately not wired yet; this stage tests native gear rendering plus addon price decoration.
+- Historical MerchantFrame proof-of-concept: switched HuntsUI rewards to AzerothCore's real merchant pipeline and Blizzard's stock `MerchantFrame` using four temporary stock Wrath gear rows. Those rows were removed during 1.0.24 release cleanup after the dynamic catalog/purchase path was validated.
 
 
 ### 1.0.19-dev

@@ -293,9 +293,26 @@ public:
             sealStoreContexts[guid] = {};
             huntsAddonStoreGivers[guid] = creature->GetGUID();
 
-            // Native Blizzard MerchantFrame path for HuntsUI.
-            CloseGossipMenuFor(player);
-            player->GetSession()->SendListInventory(creature->GetGUID());
+            if (HasHuntsAddon(player))
+            {
+                // HuntsUI announced itself at login. Open Blizzard's native
+                // MerchantFrame immediately with an authoritative dynamic
+                // catalog; HuntsUI will then request the active-spec catalog.
+                std::vector<SealSpecChoice> specs = GetSealSpecs(player);
+                if (specs.empty())
+                {
+                    ShowMainMenu(player, creature);
+                    return true;
+                }
+
+                CloseGossipMenuFor(player);
+                SendHuntsSealMerchantCatalog(player, creature, specs.front().Spec);
+                return true;
+            }
+
+            // Stock 3.3.5 client / addon disabled: retain the complete
+            // server-side gossip Seal store.
+            ShowSealSpecMenu(player, creature);
             return true;
         }
 
@@ -693,11 +710,7 @@ public:
         std::vector<std::string> parts = SplitAddonRequest(request);
         std::string response = "ERR|bad-request";
 
-        if (!parts.empty() && parts[0] == "PING")
-        {
-            response = "PONG";
-        }
-        else if (!parts.empty() && parts[0] == "HELLO")
+        if (!parts.empty() && parts[0] == "HELLO")
         {
             huntsAddonSessions.insert(guid);
             response = "HELLO|1";
@@ -774,58 +787,7 @@ public:
                     SendHuntsSealMerchantCatalog(player, giver, itemIt->second.Spec);
             }
         }
-        else if (parts.size() >= 5 && parts[0] == "LIST")
-        {
-            auto giverIt = huntsAddonStoreGivers.find(guid);
-            Creature* giver = giverIt != huntsAddonStoreGivers.end() ? ObjectAccessor::GetCreature(*player, giverIt->second) : nullptr;
-            if (!giver || !sHuntMgr.IsHuntGiver(giver->GetEntry()) || !player->IsWithinDistInMap(giver, 12.0f))
-                response = "ERR|You are no longer speaking with a Huntmaster.";
-            else
-            {
-                uint32 const spec = ParseAddonUInt(parts[1]);
-                uint8 const tier = static_cast<uint8>(ParseAddonUInt(parts[2]));
-                uint8 const rawSlot = static_cast<uint8>(ParseAddonUInt(parts[3]));
-                uint32 const page = ParseAddonUInt(parts[4]);
-                if (tier < 1 || tier > 4 || rawSlot > static_cast<uint8>(hunts::SealStoreSlot::Relic))
-                    response = "ERR|Invalid reward category.";
-                else
-                {
-                    std::vector<hunts::SealStoreItem> items =
-                        sHuntMgr.BuildSealStoreItems(player, spec, tier, static_cast<hunts::SealStoreSlot>(rawSlot));
-                    constexpr uint32 pageSize = 10;
-                    uint32 const offset = page * pageSize;
-                    std::ostringstream out;
-                    out << "ITEMS|" << sHuntMgr.GetSealBalance(player) << "|" << sHuntMgr.GetSealStoreTierCost(tier)
-                        << "|" << page << "|" << ((offset + pageSize < items.size()) ? 1 : 0) << "|";
-                    for (uint32 i = offset; i < items.size() && i < offset + pageSize; ++i)
-                    {
-                        if (i != offset)
-                            out << ",";
-                        out << items[i].ItemId << ":" << items[i].ItemLevel;
-                    }
-                    response = out.str();
-                }
-            }
-        }
-        else if (parts.size() >= 4 && parts[0] == "BUY")
-        {
-            auto giverIt = huntsAddonStoreGivers.find(guid);
-            Creature* giver = giverIt != huntsAddonStoreGivers.end() ? ObjectAccessor::GetCreature(*player, giverIt->second) : nullptr;
-            if (!giver || !sHuntMgr.IsHuntGiver(giver->GetEntry()) || !player->IsWithinDistInMap(giver, 12.0f))
-                response = "ERR|You are no longer speaking with a Huntmaster.";
-            else
-            {
-                uint32 const spec = ParseAddonUInt(parts[1]);
-                uint8 const tier = static_cast<uint8>(ParseAddonUInt(parts[2]));
-                uint32 const itemId = ParseAddonUInt(parts[3]);
-                std::string purchaseMessage;
-                bool const success = sHuntMgr.PurchaseSealStoreItem(player, spec, tier, itemId, purchaseMessage);
-                std::ostringstream out;
-                out << "BUY|" << (success ? 1 : 0) << "|" << sHuntMgr.GetSealBalance(player) << "|" << itemId;
-                response = out.str();
-                ChatHandler(player->GetSession()).PSendSysMessage("|cff33ccff[Hunts]|r {}", purchaseMessage);
-            }
-        }
+
 
         msg = prefix + response;
         if (msg.size() > 250)

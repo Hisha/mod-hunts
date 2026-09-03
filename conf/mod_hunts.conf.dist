@@ -1,7 +1,7 @@
 # Hunts - standalone AzerothCore hunting gameplay module
 
 Hunts.Enable = 1
-Hunts.Debug = 1
+Hunts.Debug = 0
 Hunts.MinimumLevel = 10
 
 # 0 = Local Region, 1 = Continent, 2 = World
