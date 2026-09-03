@@ -1678,12 +1678,14 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
         return;
 
     // A Hunter Elite companion is part of the encounter, not ordinary tracking
-    // prey. Killing it must never advance the hunter's tracking percentage.
-    for (auto const& [ownerGuid, petGuid] : _hunterPetGuids)
+    // prey. Killing it must never advance the hunter's tracking percentage or
+    // disturb the required-ambush state. Erase through the iterator rather than
+    // invalidating a range-for traversal.
+    for (auto itr = _hunterPetGuids.begin(); itr != _hunterPetGuids.end(); ++itr)
     {
-        if (!petGuid.IsEmpty() && petGuid == killed->GetGUID())
+        if (!itr->second.IsEmpty() && itr->second == killed->GetGUID())
         {
-            _hunterPetGuids.erase(ownerGuid);
+            _hunterPetGuids.erase(itr);
             return;
         }
     }
@@ -2751,6 +2753,19 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
     if(!prey){message="The prey could not be spawned.";return false;}
     prey->SetLevel(player->GetLevel());
     prey->UpdateAllStats();
+
+    // Hunt prey must always be an attackable hostile encounter regardless of
+    // presentation shell. Some useful class-looking base creatures (notably the
+    // Farstrider's blood-elf ranger shell) carry friendly/non-attackable unit
+    // flags in stock world data. Dynamic template materialization intentionally
+    // preserves most shell fields, so normalize the runtime creature here after
+    // spawn rather than requiring every authored template to find a naturally
+    // hostile visual clone.
+    prey->SetFaction(14);
+    prey->RemoveFlag(UNIT_FIELD_FLAGS,
+        UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC |
+        UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_PASSIVE);
+    prey->SetReactState(REACT_AGGRESSIVE);
 
     // SetLevel + UpdateAllStats makes the derived template use the hunter's
     // level.  Also enforce a player-relative health floor so a high-level

@@ -156,3 +156,9 @@ The Elite prebuilt cleanup header now covers the complete current Elite roster/t
 Adds Elite prey **The Farstrider**, a Marksmanship-style Hunter encounter built around the existing terrain-safe ranged combat brain. The Farstrider maintains approximately 24 yards with Hunter's Mark, Serpent Sting, Steady Shot, Aimed Shot and Concussive Shot, uses Disengage under pressure, adds Explosive Trap during the final encounter, and uses Deterrence as a low-health defensive window.
 
 The Farstrider also introduces the first Hunt-owned combat companion. Because an NPC creature cannot truthfully use the player's stable/pet subsystem, the Hunt combat brain intercepts the authored Call Pet action and summons **Nightfang**, a temporary hostile wolf from its own dynamic Hunt creature template. Nightfang scales its level to the prey, receives encounter-relative health, attacks the hunter independently, does not count as ordinary tracking progress if killed, and is explicitly removed when the ambush/final prey ends or disappears. No client patch or schema change is required.
+
+## 1.0.15-dev - Farstrider hostile-shell correction
+
+Fixed the first live Farstrider test where Nightfang attacked correctly but The Farstrider inherited non-attackable/friendly runtime flags from the stock blood-elf ranger presentation shell. Hunt prey are now normalized after spawn to faction 14, aggressive react state, and attackable/selectable player-combat flags, so authored class-looking shells cannot silently turn the actual Hunt target into a friendly NPC.
+
+Hunter companion death bookkeeping also now erases Nightfang's encounter GUID safely without touching the prey runtime or required-ambush gate. Killing Nightfang is optional encounter progress only; the ambush remains pending until The Farstrider himself reaches the configured escape-health threshold.
