@@ -597,7 +597,11 @@ public:
         std::vector<std::string> parts = SplitAddonRequest(request);
         std::string response = "ERR|bad-request";
 
-        if (!parts.empty() && parts[0] == "HELLO")
+        if (!parts.empty() && parts[0] == "PING")
+        {
+            response = "PONG";
+        }
+        else if (!parts.empty() && parts[0] == "HELLO")
         {
             huntsAddonSessions.insert(guid);
             response = "HELLO|1";

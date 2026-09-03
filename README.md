@@ -174,6 +174,12 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.19-dev
+- Added only the HuntsUI transport diagnostic: `PING` returns `PONG` through the existing `HUNTS` addon-message path.
+- No Seal-store behavior changes in this step.
+
+
+
 ### 1.0.18-dev
 - Reworked HuntsUI store opening so it no longer depends on the client completing a handshake before the Rewards gossip selection.
 - Selecting Huntmaster's Seal rewards now always prepares the normal server-side gossip store as the stock-client fallback and simultaneously pushes an `OPEN` addon packet directly to the player.
