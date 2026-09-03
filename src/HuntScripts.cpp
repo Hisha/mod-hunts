@@ -194,10 +194,7 @@ public:
             sealStoreContexts[guid] = {};
             huntsAddonStoreGivers[guid] = creature->GetGUID();
 
-            // Native MerchantFrame proof-of-concept. The Huntmaster is a real
-            // vendor (npcflag + npc_vendor are supplied by SQL), so this uses
-            // AzerothCore's stock merchant packet path and the unmodified
-            // Wrath MerchantFrame on the client.
+            // Native Blizzard MerchantFrame path for HuntsUI.
             CloseGossipMenuFor(player);
             player->GetSession()->SendListInventory(creature->GetGUID());
             return true;

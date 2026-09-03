@@ -175,11 +175,10 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 ## Development history
 
 ### 1.0.20-dev
-- Rebased the HuntsUI experiment onto the real Blizzard `MerchantFrame` instead of a custom reward frame.
-- Selecting `Browse Huntmaster's Seal rewards` now closes gossip and calls AzerothCore's stock `SendListInventory` path for that Huntmaster.
-- Huntmasters are now gossip+vendor NPCs and expose one ordinary test item (Refreshing Spring Water, item 159) solely to prove native merchant rendering, item icons, tooltips, and merchant interaction.
-- No Seal currency overlay, dynamic reward catalog, or custom purchase interception is included yet.
-
+- Switched HuntsUI rewards to AzerothCore's real merchant pipeline and Blizzard's stock `MerchantFrame`.
+- Huntmasters are gossip+vendor NPCs with four stock Wrath gear rows for the Seal-price presentation test.
+- Selecting Seal rewards closes gossip and sends native vendor inventory.
+- Seal purchasing is deliberately not wired yet; this stage tests native gear rendering plus addon price decoration.
 
 
 ### 1.0.19-dev
