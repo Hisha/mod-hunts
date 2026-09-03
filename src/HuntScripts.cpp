@@ -121,6 +121,31 @@ std::vector<SealSpecChoice> GetSealSpecs(Player const* player)
     }
 }
 
+std::string BuildSealAddonOpenPayload(Player* player)
+{
+    std::vector<SealSpecChoice> specs = GetSealSpecs(player);
+    std::ostringstream out;
+    out << "OPEN|" << sHuntMgr.GetSealBalance(player) << "|";
+    for (uint32 i = 0; i < specs.size(); ++i)
+    {
+        if (i)
+            out << ",";
+        out << specs[i].Spec << ":" << specs[i].Name;
+    }
+    return out.str();
+}
+
+void SendHuntsAddonPayload(Player* player, std::string const& payload)
+{
+    if (!player || !player->GetSession())
+        return;
+
+    std::string const wire = "HUNTS\t" + payload;
+    WorldPacket data;
+    ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER, LANG_ADDON, player, player, wire);
+    player->SendDirectMessage(&data);
+}
+
 char const* GetSealSlotName(hunts::SealStoreSlot slot)
 {
     switch (slot)
@@ -167,21 +192,14 @@ public:
         if (action == ACTION_SEAL_STORE)
         {
             sealStoreContexts[guid] = {};
-
-            // Always remember the Huntmaster before choosing the UI path.
-            // HuntsUI's OPEN request is sent by the client immediately after the
-            // gossip option is selected.  On a fresh login that request can race
-            // the HELLO handshake, so gating this GUID behind HasHuntsAddon()
-            // created a circular dependency: the addon could ask to open the
-            // store only after the server had already refused to remember the
-            // Huntmaster.
             huntsAddonStoreGivers[guid] = creature->GetGUID();
 
-            if (HasHuntsAddon(player))
-                CloseGossipMenuFor(player);
-            else
-                ShowSealSpecMenu(player, creature);
-
+            // Always prepare the stock gossip store as the no-addon fallback,
+            // then push the graphical store payload. HuntsUI closes the
+            // fallback when it receives OPEN; stock clients ignore the addon
+            // packet and remain in the gossip store.
+            ShowSealSpecMenu(player, creature);
+            SendHuntsAddonPayload(player, BuildSealAddonOpenPayload(player));
             return true;
         }
 
@@ -601,16 +619,7 @@ public:
                 huntsAddonSessions.insert(guid);
                 CloseGossipMenuFor(player);
 
-                std::vector<SealSpecChoice> specs = GetSealSpecs(player);
-                std::ostringstream out;
-                out << "OPEN|" << sHuntMgr.GetSealBalance(player) << "|";
-                for (uint32 i = 0; i < specs.size(); ++i)
-                {
-                    if (i)
-                        out << ",";
-                    out << specs[i].Spec << ":" << specs[i].Name;
-                }
-                response = out.str();
+                response = BuildSealAddonOpenPayload(player);
             }
         }
         else if (parts.size() >= 5 && parts[0] == "LIST")

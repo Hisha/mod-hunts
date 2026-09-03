@@ -174,6 +174,14 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.18-dev
+- Reworked HuntsUI store opening so it no longer depends on the client completing a handshake before the Rewards gossip selection.
+- Selecting Huntmaster's Seal rewards now always prepares the normal server-side gossip store as the stock-client fallback and simultaneously pushes an `OPEN` addon packet directly to the player.
+- HuntsUI clients close the fallback gossip page when that `OPEN` packet arrives; clients without HuntsUI ignore the addon packet and remain in the fully functional gossip store.
+- The existing self-whisper request/response transport remains in place for catalog paging and purchases.
+
+
+
 ### 1.0.17-dev
 - Fixed the HuntsUI Seal-store open handshake. The Huntmaster is now remembered as soon as the Rewards gossip option is selected, even when the addon's login `HELLO` has not completed yet.
 - An addon's `OPEN` request now acts as a valid late handshake and closes the temporary gossip fallback before returning the graphical Seal catalog.
