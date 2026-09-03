@@ -551,9 +551,53 @@ uint32 GetEquippedItemLevelForCandidate(Player* player, ItemTemplate const& cand
 
 bool IsSpecCompatibleEquipment(uint32 spec, ItemTemplate const& item)
 {
+    bool const paladinSpec =
+        spec == TALENT_TREE_PALADIN_HOLY ||
+        spec == TALENT_TREE_PALADIN_PROTECTION ||
+        spec == TALENT_TREE_PALADIN_RETRIBUTION;
+
+    if (paladinSpec)
+    {
+        // Paladins use Librams in the ranged/relic slot.  Do not let the broad
+        // "Ranged / Relics" store category substitute wands, bows, guns, etc.
+        if (item.InventoryType == INVTYPE_RELIC)
+            return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_LIBRAM;
+
+        if (item.InventoryType == INVTYPE_RANGED || item.InventoryType == INVTYPE_RANGEDRIGHT ||
+            item.InventoryType == INVTYPE_THROWN)
+            return false;
+
+        if (item.Class == ITEM_CLASS_WEAPON)
+        {
+            if (spec == TALENT_TREE_PALADIN_RETRIBUTION)
+            {
+                if (item.InventoryType != INVTYPE_2HWEAPON)
+                    return false;
+
+                return item.SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
+                    item.SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
+                    item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD2 ||
+                    item.SubClass == ITEM_SUBCLASS_WEAPON_POLEARM;
+            }
+
+            // Holy and Protection shop for one-handed Paladin weapons only.
+            // This explicitly prevents daggers/wands and other technically
+            // scoreable weapon templates from leaking into their catalogs.
+            if (item.InventoryType != INVTYPE_WEAPON && item.InventoryType != INVTYPE_WEAPONMAINHAND)
+                return false;
+
+            return item.SubClass == ITEM_SUBCLASS_WEAPON_AXE ||
+                item.SubClass == ITEM_SUBCLASS_WEAPON_MACE ||
+                item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD;
+        }
+
+        // Paladins do not use held-in-off-hand frills or off-hand weapons.
+        if (item.InventoryType == INVTYPE_HOLDABLE || item.InventoryType == INVTYPE_WEAPONOFFHAND)
+            return false;
+    }
+
     switch (spec)
     {
-        case TALENT_TREE_PALADIN_RETRIBUTION:
         case TALENT_TREE_WARRIOR_ARMS:
             if (item.Class == ITEM_CLASS_WEAPON)
                 return item.InventoryType == INVTYPE_2HWEAPON;
@@ -561,12 +605,7 @@ bool IsSpecCompatibleEquipment(uint32 spec, ItemTemplate const& item)
                 item.InventoryType == INVTYPE_WEAPONOFFHAND)
                 return false;
             break;
-        case TALENT_TREE_PALADIN_PROTECTION:
         case TALENT_TREE_WARRIOR_PROTECTION:
-            if (item.InventoryType == INVTYPE_2HWEAPON)
-                return false;
-            break;
-        case TALENT_TREE_PALADIN_HOLY:
             if (item.InventoryType == INVTYPE_2HWEAPON)
                 return false;
             break;

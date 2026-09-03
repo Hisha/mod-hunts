@@ -174,6 +174,13 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.22-dev
+- Tightened Paladin Seal-store equipment filtering.
+- Holy and Protection now receive only valid one-handed Paladin weapon subclasses (axes, maces, and swords); daggers, wands, and unrelated weapon types are excluded.
+- Retribution now explicitly limits weapon rewards to valid two-handed Paladin weapon types (axes, maces, swords, and polearms).
+- Paladin `Ranged / Relics` rewards are now Librams only, so ranged weapons can no longer displace Librams from the dynamic native merchant catalog.
+- Paladin held-in-off-hand frills and off-hand weapons are excluded; shields remain available where appropriate.
+
 ### 1.0.21-dev
 - Replaced the four-item MerchantFrame proof catalog with a per-character, per-spec dynamic Seal reward catalog.
 - The server reuses `BuildSealStoreItems()` and selects the highest-ranked eligible item for each slot/tier combination.
