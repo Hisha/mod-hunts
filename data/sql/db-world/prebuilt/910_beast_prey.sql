@@ -1,5 +1,5 @@
 -- ============================================================================
--- Hunts Hunt - legendary beast prey collection
+-- Hunts - legendary beast prey collection
 --
 -- All visuals and spells use existing 3.3.5a assets; no client patch is needed.
 -- Combat abilities are data-driven through hunt_prey_ability.

@@ -1,5 +1,5 @@
 -- ============================================================================
--- Hunts Hunt zone catalogue
+-- Hunts zone catalogue
 -- No faction restrictions exist by design. A zone only becomes assignable when
 -- it also has at least one enabled row in hunt_final_location, preventing a
 -- hunter from receiving a contract that cannot be completed.

@@ -2,7 +2,7 @@
 -- Hunts - Derived Creature Templates
 -- ============================================================================
 --
--- Defines custom creatures used by LW without requiring invasion SQL to
+-- Defines custom creatures used by Hunts without requiring Hunt content SQL to
 -- hard-code entries in AzerothCore's creature_template table.
 --
 -- Each definition starts with an existing AzerothCore creature specified by
@@ -23,8 +23,8 @@
 -- Hunts deliberately does NOT inherit things such as SmartAI, ScriptName,
 -- vendor/quest/trainer/gossip behavior, loot, gold, or permanent movement.
 --
--- Creature level is NOT defined here. Level can be controlled independently
--- for each spawn using lw_spawn_member.level_override.
+-- Creature level is NOT defined here. Hunt prey are scaled by the runtime for
+-- the assigned hunter and encounter.
 --
 -- ============================================================================
 
@@ -36,7 +36,7 @@
 -- Logical definitions for Hunts-generated creatures.
 --
 -- id
---     LW's logical identifier for this creature definition.
+--     Hunts' logical identifier for this creature definition.
 --
 --     This is NOT the AzerothCore creature_template.entry.
 --
@@ -203,11 +203,11 @@ CREATE TABLE IF NOT EXISTS `hunt_creature_template` (
 --
 -- IMPORTANT:
 --
--- Premade invasion SQL should generally NOT insert rows into this table.
+-- Hunt content SQL should generally NOT insert rows into this table.
 --
--- Hunts manages this table automatically. Invasion authors define logical
+-- Hunts manages this table automatically. Hunt authors define logical
 -- creatures in hunt_creature_template and reference their logical IDs from
--- lw_spawn_member.
+-- hunt_prey.prey_template_id.
 --
 --
 -- hunt_template_id
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS `hunt_creature_template` (
 --     Example:
 --         15000007
 --
---     This value is chosen dynamically so premade invasions do not need to
+--     This value is chosen dynamically so Hunt content does not need to
 --     reserve globally fixed creature_template IDs.
 --
 --     Different installations may allocate different entries for the same

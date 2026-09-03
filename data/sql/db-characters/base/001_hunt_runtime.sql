@@ -1,4 +1,4 @@
--- Per-character active Hunts Hunt state.
+-- Per-character active Hunts state.
 CREATE TABLE IF NOT EXISTS `hunt_runtime` (
   `guid` INT UNSIGNED NOT NULL,
   `prey_id` INT UNSIGNED NOT NULL,

@@ -1,4 +1,4 @@
--- Hunts Hunt/Prey subsystem - canonical schema
+-- Hunts/Prey subsystem - canonical schema
 CREATE TABLE IF NOT EXISTS `hunt_prey` (
   `id` INT UNSIGNED NOT NULL,
   `name` VARCHAR(100) NOT NULL,

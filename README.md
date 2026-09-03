@@ -201,6 +201,14 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.25-dev - Standalone naming and repository hardening
+- Removed the last user-facing `Living World Huntmaster` error text from the standalone module.
+- Cleaned inherited Living World/invasion terminology from the canonical dynamic creature-template SQL documentation.
+- Renamed `902_elwynn_hunt_test.sql` to `902_hunt_activation_object.sql`; it is production shared activation-object content, not an Elwynn test fixture.
+- Cleaned Huntmaster SQL comments/variables/spawn labels left over from the original Living World extraction.
+- Added a repository `.gitignore` for build/editor artifacts and local non-distributed module configuration.
+- Audited the canonical character/world schemas, prebuilt ordering, config defaults, authoring-command gating, and remaining debug/test markers. No additional schema migration is required for the 1.0 release path.
+
 ### 1.0.24-dev - Release cleanup and stock-client fallback
 - Restored the intended optional-addon behavior for Huntmaster Seal rewards. HuntsUI sessions use the native dynamic MerchantFrame catalog; clients without HuntsUI remain in the complete server-side gossip store.
 - Removed the four static Wrath gear rows used only during the MerchantFrame proof-of-concept. Huntmasters retain the vendor NPC flag, while their graphical inventory is generated dynamically per character/spec.

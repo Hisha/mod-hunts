@@ -1,5 +1,5 @@
 -- ============================================================================
--- Hunts Huntmasters - permanent capital-city service NPCs
+-- Huntmasters - permanent capital-city service NPCs
 -- No quest flags are used. Each Huntmaster is gossip-only and is discoverable
 -- through the city's normal guard-direction gossip via hunt_guard_locator.
 -- ============================================================================
@@ -68,19 +68,19 @@ JOIN `creature_template_model` ctm ON ctm.`CreatureID`=m.base_entry;
 -- Remove/recreate our permanent spawns. GUIDs are allocated above the current
 -- database maximum at apply time so the module does not claim a fixed core GUID range.
 DELETE FROM `creature` WHERE `id` IN (@SW_ENTRY,@IF_ENTRY,@DN_ENTRY,@EX_ENTRY,@OG_ENTRY,@TB_ENTRY,@UC_ENTRY,@SM_ENTRY,@SH_ENTRY,@DA_ENTRY);
-SET @LW_HUNTMASTER_CGUID := (SELECT COALESCE(MAX(`guid`),0) FROM `creature`);
+SET @HUNTMASTER_CGUID := (SELECT COALESCE(MAX(`guid`),0) FROM `creature`);
 INSERT INTO `creature`
 (`guid`,`id`,`map`,`zoneId`,`areaId`,`spawnMask`,`phaseMask`,`equipment_id`,`position_x`,`position_y`,`position_z`,`orientation`,`spawntimesecs`,`wander_distance`,`currentwaypoint`,`curhealth`,`curmana`,`MovementType`,`npcflag`,`unit_flags`,`dynamicflags`,`ScriptName`,`VerifiedBuild`,`CreateObject`,`Comment`) VALUES
-(@LW_HUNTMASTER_CGUID+1,@SW_ENTRY,0,0,0,1,1,0,-8771.718,637.399,97.22381,3.0327725,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Stormwind'),
-(@LW_HUNTMASTER_CGUID+2,@IF_ENTRY,0,0,0,1,1,0,-5036.303,-1189.7064,507.4897,5.23103,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Ironforge'),
-(@LW_HUNTMASTER_CGUID+3,@DN_ENTRY,1,0,0,1,1,0,9947.34,2272.71,1341.47,0.017453,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Darnassus'),
-(@LW_HUNTMASTER_CGUID+4,@EX_ENTRY,530,0,0,1,1,0,-4185.3833,-11559.71,-125.5796,3.652105,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Exodar'),
-(@LW_HUNTMASTER_CGUID+5,@OG_ENTRY,1,0,0,1,1,0,1857.5254,-4516.36,24.02204,3.5012627,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Orgrimmar'),
-(@LW_HUNTMASTER_CGUID+6,@TB_ENTRY,1,0,0,1,1,0,-1401.8701,-144.85625,159.25444,1.7206132,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Thunder Bluff'),
-(@LW_HUNTMASTER_CGUID+7,@UC_ENTRY,0,0,0,1,1,0,1476.3986,36.700302,-62.353333,1.599211,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Undercity'),
-(@LW_HUNTMASTER_CGUID+8,@SM_ENTRY,530,0,0,1,1,0,9801.341,-7324.399,14.6854105,2.006077,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Silvermoon'),
-(@LW_HUNTMASTER_CGUID+9,@SH_ENTRY,530,0,0,1,1,0,-2019.2322,5203.5225,-35.69525,5.916366,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Shattrath'),
-(@LW_HUNTMASTER_CGUID+10,@DA_ENTRY,571,0,0,1,1,0,5773.8013,548.9488,651.6386,0.8435841,300,0,0,1,0,0,0,0,0,'',0,0,'Huntsmaster - Dalaran');
+(@HUNTMASTER_CGUID+1,@SW_ENTRY,0,0,0,1,1,0,-8771.718,637.399,97.22381,3.0327725,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Stormwind'),
+(@HUNTMASTER_CGUID+2,@IF_ENTRY,0,0,0,1,1,0,-5036.303,-1189.7064,507.4897,5.23103,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Ironforge'),
+(@HUNTMASTER_CGUID+3,@DN_ENTRY,1,0,0,1,1,0,9947.34,2272.71,1341.47,0.017453,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Darnassus'),
+(@HUNTMASTER_CGUID+4,@EX_ENTRY,530,0,0,1,1,0,-4185.3833,-11559.71,-125.5796,3.652105,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Exodar'),
+(@HUNTMASTER_CGUID+5,@OG_ENTRY,1,0,0,1,1,0,1857.5254,-4516.36,24.02204,3.5012627,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Orgrimmar'),
+(@HUNTMASTER_CGUID+6,@TB_ENTRY,1,0,0,1,1,0,-1401.8701,-144.85625,159.25444,1.7206132,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Thunder Bluff'),
+(@HUNTMASTER_CGUID+7,@UC_ENTRY,0,0,0,1,1,0,1476.3986,36.700302,-62.353333,1.599211,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Undercity'),
+(@HUNTMASTER_CGUID+8,@SM_ENTRY,530,0,0,1,1,0,9801.341,-7324.399,14.6854105,2.006077,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Silvermoon'),
+(@HUNTMASTER_CGUID+9,@SH_ENTRY,530,0,0,1,1,0,-2019.2322,5203.5225,-35.69525,5.916366,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Shattrath'),
+(@HUNTMASTER_CGUID+10,@DA_ENTRY,571,0,0,1,1,0,5773.8013,548.9488,651.6386,0.8435841,300,0,0,1,0,0,0,0,0,'',0,0,'Huntmaster - Dalaran');
 
 DELETE FROM `hunt_giver` WHERE `id` BETWEEN 1 AND 10;
 INSERT INTO `hunt_giver` (`id`,`creature_entry`,`city_name`,`map_id`,`continent_id`,`x`,`y`,`z`,`enabled`,`comment`) VALUES

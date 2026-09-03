@@ -1,4 +1,4 @@
--- Hunts Hunt local-region mappings. Regions may intentionally overlap.
+-- Hunts local-region mappings. Regions may intentionally overlap.
 DELETE FROM `hunt_local_region_zone`;
 INSERT INTO `hunt_local_region_zone` (`id`,`hunt_giver_id`,`zone_id`,`enabled`,`comment`) VALUES
 (1,1,12,1,'Stormwind local hunting region'),

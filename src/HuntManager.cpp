@@ -1223,7 +1223,7 @@ bool HuntManager::SendHuntmasterLocation(Player* player, uint32 guardEntry, std:
 bool HuntManager::RequestHunt(Player* player, Creature* giver, std::string& message)
 {
     if(!_enabled){message="The Hunt system is disabled.";return false;}
-    if(!player||!giver||!IsHuntGiver(giver->GetEntry())){message="That creature is not a Living World Huntmaster.";return false;}
+    if(!player||!giver||!IsHuntGiver(giver->GetEntry())){message="That creature is not a Huntmaster.";return false;}
     if(player->GetLevel()<_minimumLevel){message="You must be at least level "+std::to_string(_minimumLevel)+" to take a hunt.";return false;}
     if(HasActiveHunt(player)){message="You already have an active hunt.";return false;}
 
@@ -1480,7 +1480,7 @@ bool HuntManager::PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier,
 bool HuntManager::RequestEliteHunt(Player* player, Creature* giver, std::string& message)
 {
     if(!_enabled){message="The Hunt system is disabled.";return false;}
-    if(!player||!giver||!IsHuntGiver(giver->GetEntry())){message="That creature is not a Living World Huntmaster.";return false;}
+    if(!player||!giver||!IsHuntGiver(giver->GetEntry())){message="That creature is not a Huntmaster.";return false;}
     if(player->GetLevel()<_minimumLevel){message="You are not yet ready for an Elite Hunt.";return false;}
     if(HasActiveHunt(player)){message="You already have an active hunt.";return false;}
     if(!IsEliteUnlocked(player)){message="Elite Hunts unlock after "+std::to_string(_eliteRequiredNormalCompletions)+" completed normal hunts.";return false;}
