@@ -174,6 +174,13 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.21-dev
+- Replaced the four-item MerchantFrame proof catalog with a per-character, per-spec dynamic Seal reward catalog.
+- The server reuses `BuildSealStoreItems()` and selects the highest-ranked eligible item for each slot/tier combination.
+- Catalog order is slot-first, then 5/10/20/30-Seal tiers: Head, Shoulders, Chest, Hands, Legs, Wrists, Waist, Feet, Back, Neck, Rings, Trinkets, Weapons, Off-hand/Shields, and Ranged/Relics.
+- Added `CATALOG` and `BUYITEM` addon protocol operations. The server remains authoritative for catalog membership, spec/tier eligibility, Seal balance, bag space, deduction, item creation, and soulbinding.
+- The native merchant packet's price field carries the virtual Seal cost so HuntsUI can render correct configured prices without maintaining a second price table.
+
 ### 1.0.20-dev
 - Switched HuntsUI rewards to AzerothCore's real merchant pipeline and Blizzard's stock `MerchantFrame`.
 - Huntmasters are gossip+vendor NPCs with four stock Wrath gear rows for the Seal-price presentation test.
