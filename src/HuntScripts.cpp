@@ -194,12 +194,12 @@ public:
             sealStoreContexts[guid] = {};
             huntsAddonStoreGivers[guid] = creature->GetGUID();
 
-            // Always prepare the stock gossip store as the no-addon fallback,
-            // then push the graphical store payload. HuntsUI closes the
-            // fallback when it receives OPEN; stock clients ignore the addon
-            // packet and remain in the gossip store.
-            ShowSealSpecMenu(player, creature);
-            SendHuntsAddonPayload(player, BuildSealAddonOpenPayload(player));
+            // Native MerchantFrame proof-of-concept. The Huntmaster is a real
+            // vendor (npcflag + npc_vendor are supplied by SQL), so this uses
+            // AzerothCore's stock merchant packet path and the unmodified
+            // Wrath MerchantFrame on the client.
+            CloseGossipMenuFor(player);
+            player->GetSession()->SendListInventory(creature->GetGUID());
             return true;
         }
 

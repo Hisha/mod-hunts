@@ -174,6 +174,14 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.20-dev
+- Rebased the HuntsUI experiment onto the real Blizzard `MerchantFrame` instead of a custom reward frame.
+- Selecting `Browse Huntmaster's Seal rewards` now closes gossip and calls AzerothCore's stock `SendListInventory` path for that Huntmaster.
+- Huntmasters are now gossip+vendor NPCs and expose one ordinary test item (Refreshing Spring Water, item 159) solely to prove native merchant rendering, item icons, tooltips, and merchant interaction.
+- No Seal currency overlay, dynamic reward catalog, or custom purchase interception is included yet.
+
+
+
 ### 1.0.19-dev
 - Added only the HuntsUI transport diagnostic: `PING` returns `PONG` through the existing `HUNTS` addon-message path.
 - No Seal-store behavior changes in this step.
