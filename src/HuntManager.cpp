@@ -2764,7 +2764,7 @@ bool HuntManager::SpawnPrey(Player* player, HuntRuntime& r, bool finalEncounter,
     prey->SetFaction(14);
     prey->RemoveFlag(UNIT_FIELD_FLAGS,
         UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC |
-        UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_PASSIVE);
+        UNIT_FLAG_IMMUNE_TO_NPC);
     prey->SetReactState(REACT_AGGRESSIVE);
 
     // SetLevel + UpdateAllStats makes the derived template use the hunter's
