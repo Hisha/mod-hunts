@@ -7,6 +7,8 @@
 #include "GameObject.h"
 #include "GameObjectScript.h"
 #include "ObjectMgr.h"
+#include "ObjectAccessor.h"
+#include "SharedDefines.h"
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptedCreature.h"
@@ -16,6 +18,7 @@
 #include <algorithm>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "ScriptedGossip.h"
 
@@ -55,6 +58,36 @@ struct SealStoreContext
 };
 
 std::unordered_map<uint32, SealStoreContext> sealStoreContexts;
+std::unordered_set<uint32> huntsAddonSessions;
+std::unordered_map<uint32, ObjectGuid> huntsAddonStoreGivers;
+
+std::vector<std::string> SplitAddonRequest(std::string const& value, char delimiter = '|')
+{
+    std::vector<std::string> parts;
+    std::stringstream stream(value);
+    std::string part;
+    while (std::getline(stream, part, delimiter))
+        parts.push_back(part);
+    return parts;
+}
+
+uint32 ParseAddonUInt(std::string const& value)
+{
+    try
+    {
+        return static_cast<uint32>(std::stoul(value));
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+bool HasHuntsAddon(Player const* player)
+{
+    return player && huntsAddonSessions.find(player->GetGUID().GetCounter()) != huntsAddonSessions.end();
+}
+
 
 std::vector<SealSpecChoice> GetSealSpecs(Player const* player)
 {
@@ -134,7 +167,13 @@ public:
         if (action == ACTION_SEAL_STORE)
         {
             sealStoreContexts[guid] = {};
-            ShowSealSpecMenu(player, creature);
+            if (HasHuntsAddon(player))
+            {
+                huntsAddonStoreGivers[guid] = creature->GetGUID();
+                CloseGossipMenuFor(player);
+            }
+            else
+                ShowSealSpecMenu(player, creature);
             return true;
         }
 
@@ -261,7 +300,7 @@ private:
             std::ostringstream label;
             uint32 const seals = sHuntMgr.GetSealBalance(player);
             label << "Browse Huntmaster's Seal rewards. (" << seals << " Seal" << (seals == 1 ? "" : "s") << ")";
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, label.str(), GOSSIP_SENDER_MAIN, ACTION_SEAL_STORE);
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, label.str(), GOSSIP_SENDER_MAIN, ACTION_SEAL_STORE);
         }
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Show me my hunting record.", GOSSIP_SENDER_MAIN, ACTION_HUNT_STATS);
@@ -506,10 +545,7 @@ public:
 class HuntPlayerScript final : public PlayerScript
 {
 public:
-    HuntPlayerScript() : PlayerScript("HuntPlayerScript", {
-        PLAYERHOOK_ON_CREATURE_KILL,
-        PLAYERHOOK_ON_CREATURE_KILLED_BY_PET
-    }) { }
+    HuntPlayerScript() : PlayerScript("HuntPlayerScript") { }
 
     void OnPlayerCreatureKill(Player* killer, Creature* killed) override
     {
@@ -519,6 +555,116 @@ public:
     void OnPlayerCreatureKilledByPet(Player* owner, Creature* killed) override
     {
         sHuntMgr.OnCreatureKill(owner, killed);
+    }
+
+    void OnPlayerBeforeSendChatMessage(Player* player, uint32& type, uint32& lang, std::string& msg) override
+    {
+        if (!player || lang != LANG_ADDON || type != CHAT_MSG_WHISPER)
+            return;
+
+        static std::string const prefix = "HUNTS\t";
+        if (msg.compare(0, prefix.size(), prefix) != 0)
+            return;
+
+        uint32 const guid = player->GetGUID().GetCounter();
+        std::string const request = msg.substr(prefix.size());
+        std::vector<std::string> parts = SplitAddonRequest(request);
+        std::string response = "ERR|bad-request";
+
+        if (!parts.empty() && parts[0] == "HELLO")
+        {
+            huntsAddonSessions.insert(guid);
+            response = "HELLO|1";
+        }
+        else if (!parts.empty() && parts[0] == "OPEN")
+        {
+            huntsAddonSessions.insert(guid);
+            auto giverIt = huntsAddonStoreGivers.find(guid);
+            Creature* giver = giverIt != huntsAddonStoreGivers.end() ? ObjectAccessor::GetCreature(*player, giverIt->second) : nullptr;
+            if (!giver || !sHuntMgr.IsHuntGiver(giver->GetEntry()) || !player->IsWithinDistInMap(giver, 12.0f))
+                response = "ERR|Talk to a Huntmaster and choose Seal rewards first.";
+            else if (!sHuntMgr.IsSealStoreAvailable(player))
+                response = "ERR|The Huntmaster Seal store is not available to you.";
+            else
+            {
+                std::vector<SealSpecChoice> specs = GetSealSpecs(player);
+                std::ostringstream out;
+                out << "OPEN|" << sHuntMgr.GetSealBalance(player) << "|";
+                for (uint32 i = 0; i < specs.size(); ++i)
+                {
+                    if (i)
+                        out << ",";
+                    out << specs[i].Spec << ":" << specs[i].Name;
+                }
+                response = out.str();
+            }
+        }
+        else if (parts.size() >= 5 && parts[0] == "LIST")
+        {
+            auto giverIt = huntsAddonStoreGivers.find(guid);
+            Creature* giver = giverIt != huntsAddonStoreGivers.end() ? ObjectAccessor::GetCreature(*player, giverIt->second) : nullptr;
+            if (!giver || !sHuntMgr.IsHuntGiver(giver->GetEntry()) || !player->IsWithinDistInMap(giver, 12.0f))
+                response = "ERR|You are no longer speaking with a Huntmaster.";
+            else
+            {
+                uint32 const spec = ParseAddonUInt(parts[1]);
+                uint8 const tier = static_cast<uint8>(ParseAddonUInt(parts[2]));
+                uint8 const rawSlot = static_cast<uint8>(ParseAddonUInt(parts[3]));
+                uint32 const page = ParseAddonUInt(parts[4]);
+                if (tier < 1 || tier > 4 || rawSlot > static_cast<uint8>(hunts::SealStoreSlot::Relic))
+                    response = "ERR|Invalid reward category.";
+                else
+                {
+                    std::vector<hunts::SealStoreItem> items =
+                        sHuntMgr.BuildSealStoreItems(player, spec, tier, static_cast<hunts::SealStoreSlot>(rawSlot));
+                    constexpr uint32 pageSize = 10;
+                    uint32 const offset = page * pageSize;
+                    std::ostringstream out;
+                    out << "ITEMS|" << sHuntMgr.GetSealBalance(player) << "|" << sHuntMgr.GetSealStoreTierCost(tier)
+                        << "|" << page << "|" << ((offset + pageSize < items.size()) ? 1 : 0) << "|";
+                    for (uint32 i = offset; i < items.size() && i < offset + pageSize; ++i)
+                    {
+                        if (i != offset)
+                            out << ",";
+                        out << items[i].ItemId << ":" << items[i].ItemLevel;
+                    }
+                    response = out.str();
+                }
+            }
+        }
+        else if (parts.size() >= 4 && parts[0] == "BUY")
+        {
+            auto giverIt = huntsAddonStoreGivers.find(guid);
+            Creature* giver = giverIt != huntsAddonStoreGivers.end() ? ObjectAccessor::GetCreature(*player, giverIt->second) : nullptr;
+            if (!giver || !sHuntMgr.IsHuntGiver(giver->GetEntry()) || !player->IsWithinDistInMap(giver, 12.0f))
+                response = "ERR|You are no longer speaking with a Huntmaster.";
+            else
+            {
+                uint32 const spec = ParseAddonUInt(parts[1]);
+                uint8 const tier = static_cast<uint8>(ParseAddonUInt(parts[2]));
+                uint32 const itemId = ParseAddonUInt(parts[3]);
+                std::string purchaseMessage;
+                bool const success = sHuntMgr.PurchaseSealStoreItem(player, spec, tier, itemId, purchaseMessage);
+                std::ostringstream out;
+                out << "BUY|" << (success ? 1 : 0) << "|" << sHuntMgr.GetSealBalance(player) << "|" << itemId;
+                response = out.str();
+                ChatHandler(player->GetSession()).PSendSysMessage("|cff33ccff[Hunts]|r {}", purchaseMessage);
+            }
+        }
+
+        msg = prefix + response;
+        if (msg.size() > 250)
+            msg = prefix + "ERR|response-too-large";
+    }
+
+    void OnPlayerBeforeLogout(Player* player) override
+    {
+        if (!player)
+            return;
+        uint32 const guid = player->GetGUID().GetCounter();
+        huntsAddonSessions.erase(guid);
+        huntsAddonStoreGivers.erase(guid);
+        sealStoreContexts.erase(guid);
     }
 };
 }

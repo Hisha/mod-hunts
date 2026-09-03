@@ -162,3 +162,11 @@ The Farstrider also introduces the first Hunt-owned combat companion. Because an
 Fixed the first live Farstrider test where Nightfang attacked correctly but The Farstrider inherited non-attackable/friendly runtime flags from the stock blood-elf ranger presentation shell. Hunt prey are now normalized after spawn to faction 14, aggressive react state, and attackable/selectable player-combat flags, so authored class-looking shells cannot silently turn the actual Hunt target into a friendly NPC.
 
 Hunter companion death bookkeeping also now erases Nightfang's encounter GUID safely without touching the prey runtime or required-ambush gate. Killing Nightfang is optional encounter progress only; the ambush remains pending until The Farstrider himself reaches the configured escape-health threshold.
+
+## 1.0.16-dev - Optional HuntsUI Seal vendor
+
+Adds the optional **HuntsUI** companion addon for Huntmaster's Seal rewards while preserving the stock gossip store as the no-addon fallback. The Huntmaster's normal Blizzard gossip remains the front door: Hunt/Elite Hunt request, status/turn-in/abandon, rewards, and hunting statistics remain visible there. The Seal reward entry now uses the normal vendor/bag gossip icon.
+
+When HuntsUI has announced itself for the current login session, selecting the existing Seal reward gossip option closes gossip and opens a token-vendor-style reward frame. The addon provides specialization, reward tier, and equipment-slot selectors, paged item rows with normal item tooltips, Seal prices, affordability dimming, and the current Huntmaster's Seal balance. Clients without HuntsUI continue through the existing specialization/tier/slot/item gossip menus unchanged.
+
+The addon uses the `HUNTS` self-whisper addon-message protocol. The server remains authoritative: the graphical client requests catalog pages and purchases, while `mod-hunts` reuses `BuildSealStoreItems` and `PurchaseSealStoreItem` for eligibility, price, Seal deduction, inventory checks, and soulbinding. Addon store requests are only accepted while the player remains near the Huntmaster whose reward gossip option was selected, so installing HuntsUI does not create a remote Seal vendor. No client patch or database/schema change is required.
