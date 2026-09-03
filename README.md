@@ -174,6 +174,15 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 
 ## Development history
 
+### 1.0.23-dev
+- Added explicit Seal-store weapon/off-hand/ranged/relic filtering for all ten Wrath classes and every talent specialization.
+- Warriors now distinguish Arms, Fury, and Protection weapon/off-hand rules; Hunters receive physical ranged weapons; Rogues receive appropriate one-hand plus physical ranged/thrown choices.
+- Priest, Mage, and Warlock catalogs are restricted to caster weapons, wands, and caster off-hands.
+- Death Knights receive DK melee weapon families and Sigils only; Shamans separate caster/shield and Enhancement dual-wield choices and receive Totems only.
+- Druids separate Balance/Restoration caster choices from Feral physical two-handers and receive Idols only.
+- Paladin weapon/Libram restrictions from 1.0.22 remain intact.
+- Filtering remains entirely server-side; HuntsUI 1.0 requires no changes.
+
 ### 1.0.22-dev
 - Tightened Paladin Seal-store equipment filtering.
 - Holy and Protection now receive only valid one-handed Paladin weapon subclasses (axes, maces, and swords); daggers, wands, and unrelated weapon types are excluded.

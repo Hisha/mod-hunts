@@ -551,70 +551,159 @@ uint32 GetEquippedItemLevelForCandidate(Player* player, ItemTemplate const& cand
 
 bool IsSpecCompatibleEquipment(uint32 spec, ItemTemplate const& item)
 {
-    bool const paladinSpec =
-        spec == TALENT_TREE_PALADIN_HOLY ||
-        spec == TALENT_TREE_PALADIN_PROTECTION ||
-        spec == TALENT_TREE_PALADIN_RETRIBUTION;
+    bool const weapon = item.Class == ITEM_CLASS_WEAPON;
+    bool const ranged = item.InventoryType == INVTYPE_RANGED || item.InventoryType == INVTYPE_RANGEDRIGHT ||
+        item.InventoryType == INVTYPE_THROWN;
+    bool const shield = item.InventoryType == INVTYPE_SHIELD;
+    bool const holdable = item.InventoryType == INVTYPE_HOLDABLE;
+    bool const offhandWeapon = item.InventoryType == INVTYPE_WEAPONOFFHAND;
+    bool const relic = item.InventoryType == INVTYPE_RELIC;
 
-    if (paladinSpec)
+    auto OneHand = [&]()
     {
-        // Paladins use Librams in the ranged/relic slot.  Do not let the broad
-        // "Ranged / Relics" store category substitute wands, bows, guns, etc.
-        if (item.InventoryType == INVTYPE_RELIC)
-            return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_LIBRAM;
-
-        if (item.InventoryType == INVTYPE_RANGED || item.InventoryType == INVTYPE_RANGEDRIGHT ||
-            item.InventoryType == INVTYPE_THROWN)
-            return false;
-
-        if (item.Class == ITEM_CLASS_WEAPON)
-        {
-            if (spec == TALENT_TREE_PALADIN_RETRIBUTION)
-            {
-                if (item.InventoryType != INVTYPE_2HWEAPON)
-                    return false;
-
-                return item.SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
-                    item.SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
-                    item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD2 ||
-                    item.SubClass == ITEM_SUBCLASS_WEAPON_POLEARM;
-            }
-
-            // Holy and Protection shop for one-handed Paladin weapons only.
-            // This explicitly prevents daggers/wands and other technically
-            // scoreable weapon templates from leaking into their catalogs.
-            if (item.InventoryType != INVTYPE_WEAPON && item.InventoryType != INVTYPE_WEAPONMAINHAND)
-                return false;
-
-            return item.SubClass == ITEM_SUBCLASS_WEAPON_AXE ||
-                item.SubClass == ITEM_SUBCLASS_WEAPON_MACE ||
-                item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD;
-        }
-
-        // Paladins do not use held-in-off-hand frills or off-hand weapons.
-        if (item.InventoryType == INVTYPE_HOLDABLE || item.InventoryType == INVTYPE_WEAPONOFFHAND)
-            return false;
-    }
+        return (item.InventoryType == INVTYPE_WEAPON || item.InventoryType == INVTYPE_WEAPONMAINHAND ||
+            item.InventoryType == INVTYPE_WEAPONOFFHAND) &&
+            (item.SubClass == ITEM_SUBCLASS_WEAPON_AXE || item.SubClass == ITEM_SUBCLASS_WEAPON_MACE ||
+             item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD || item.SubClass == ITEM_SUBCLASS_WEAPON_DAGGER ||
+             item.SubClass == ITEM_SUBCLASS_WEAPON_FIST);
+    };
+    auto PhysicalTwoHand = [&]()
+    {
+        return item.InventoryType == INVTYPE_2HWEAPON &&
+            (item.SubClass == ITEM_SUBCLASS_WEAPON_AXE2 || item.SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
+             item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD2 || item.SubClass == ITEM_SUBCLASS_WEAPON_POLEARM ||
+             item.SubClass == ITEM_SUBCLASS_WEAPON_STAFF);
+    };
+    auto CasterWeapon = [&]()
+    {
+        return ((item.InventoryType == INVTYPE_WEAPON || item.InventoryType == INVTYPE_WEAPONMAINHAND) &&
+            (item.SubClass == ITEM_SUBCLASS_WEAPON_MACE || item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD ||
+             item.SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)) ||
+            (item.InventoryType == INVTYPE_2HWEAPON && item.SubClass == ITEM_SUBCLASS_WEAPON_STAFF);
+    };
+    auto Wand = [&]() { return item.InventoryType == INVTYPE_RANGEDRIGHT && item.SubClass == ITEM_SUBCLASS_WEAPON_WAND; };
+    auto PhysicalRanged = [&]()
+    {
+        return (item.InventoryType == INVTYPE_RANGED || item.InventoryType == INVTYPE_RANGEDRIGHT) &&
+            (item.SubClass == ITEM_SUBCLASS_WEAPON_BOW || item.SubClass == ITEM_SUBCLASS_WEAPON_GUN ||
+             item.SubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW);
+    };
 
     switch (spec)
     {
         case TALENT_TREE_WARRIOR_ARMS:
-            if (item.Class == ITEM_CLASS_WEAPON)
-                return item.InventoryType == INVTYPE_2HWEAPON;
-            if (item.InventoryType == INVTYPE_SHIELD || item.InventoryType == INVTYPE_HOLDABLE ||
-                item.InventoryType == INVTYPE_WEAPONOFFHAND)
-                return false;
+            if (relic || shield || holdable || offhandWeapon) return false;
+            if (ranged) return PhysicalRanged() || item.InventoryType == INVTYPE_THROWN;
+            if (weapon) return PhysicalTwoHand();
+            break;
+        case TALENT_TREE_WARRIOR_FURY:
+            if (relic || shield || holdable) return false;
+            if (ranged) return PhysicalRanged() || item.InventoryType == INVTYPE_THROWN;
+            if (weapon) return OneHand() || PhysicalTwoHand();
             break;
         case TALENT_TREE_WARRIOR_PROTECTION:
-            if (item.InventoryType == INVTYPE_2HWEAPON)
-                return false;
+            if (relic || holdable || item.InventoryType == INVTYPE_2HWEAPON) return false;
+            if (ranged) return PhysicalRanged() || item.InventoryType == INVTYPE_THROWN;
+            if (weapon) return OneHand();
             break;
+
+        case TALENT_TREE_PALADIN_HOLY:
+        case TALENT_TREE_PALADIN_PROTECTION:
+        case TALENT_TREE_PALADIN_RETRIBUTION:
+            if (relic) return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_LIBRAM;
+            if (ranged || holdable || offhandWeapon) return false;
+            if (weapon)
+            {
+                if (spec == TALENT_TREE_PALADIN_RETRIBUTION)
+                    return item.InventoryType == INVTYPE_2HWEAPON &&
+                        (item.SubClass == ITEM_SUBCLASS_WEAPON_AXE2 || item.SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
+                         item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD2 || item.SubClass == ITEM_SUBCLASS_WEAPON_POLEARM);
+                return (item.InventoryType == INVTYPE_WEAPON || item.InventoryType == INVTYPE_WEAPONMAINHAND) &&
+                    (item.SubClass == ITEM_SUBCLASS_WEAPON_AXE || item.SubClass == ITEM_SUBCLASS_WEAPON_MACE ||
+                     item.SubClass == ITEM_SUBCLASS_WEAPON_SWORD);
+            }
+            if (spec == TALENT_TREE_PALADIN_RETRIBUTION && shield) return false;
+            break;
+
+        case TALENT_TREE_HUNTER_BEAST_MASTERY:
+        case TALENT_TREE_HUNTER_MARKSMANSHIP:
+        case TALENT_TREE_HUNTER_SURVIVAL:
+            if (relic || shield || holdable) return false;
+            if (ranged) return PhysicalRanged();
+            if (weapon) return OneHand() || PhysicalTwoHand();
+            break;
+
         case TALENT_TREE_ROGUE_ASSASSINATION:
         case TALENT_TREE_ROGUE_COMBAT:
         case TALENT_TREE_ROGUE_SUBTLETY:
+            if (relic || shield || holdable) return false;
+            if (ranged) return PhysicalRanged() || item.InventoryType == INVTYPE_THROWN;
+            if (weapon)
+            {
+                if (!OneHand()) return false;
+                if (spec == TALENT_TREE_ROGUE_ASSASSINATION && item.SubClass == ITEM_SUBCLASS_WEAPON_MACE) return false;
+                return true;
+            }
+            break;
+
+        case TALENT_TREE_PRIEST_DISCIPLINE:
+        case TALENT_TREE_PRIEST_HOLY:
+        case TALENT_TREE_PRIEST_SHADOW:
+        case TALENT_TREE_MAGE_ARCANE:
+        case TALENT_TREE_MAGE_FIRE:
+        case TALENT_TREE_MAGE_FROST:
+        case TALENT_TREE_WARLOCK_AFFLICTION:
+        case TALENT_TREE_WARLOCK_DEMONOLOGY:
+        case TALENT_TREE_WARLOCK_DESTRUCTION:
+            if (relic || shield || offhandWeapon) return false;
+            if (ranged) return Wand();
+            if (weapon) return CasterWeapon();
+            break;
+
+        case TALENT_TREE_DEATH_KNIGHT_BLOOD:
+        case TALENT_TREE_DEATH_KNIGHT_FROST:
+        case TALENT_TREE_DEATH_KNIGHT_UNHOLY:
+            if (relic) return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_SIGIL;
+            if (ranged || shield || holdable) return false;
+            if (weapon)
+                return (OneHand() || PhysicalTwoHand()) &&
+                    item.SubClass != ITEM_SUBCLASS_WEAPON_DAGGER && item.SubClass != ITEM_SUBCLASS_WEAPON_FIST &&
+                    item.SubClass != ITEM_SUBCLASS_WEAPON_POLEARM && item.SubClass != ITEM_SUBCLASS_WEAPON_STAFF;
+            break;
+
+        case TALENT_TREE_SHAMAN_ELEMENTAL:
+        case TALENT_TREE_SHAMAN_RESTORATION:
+            if (relic) return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_TOTEM;
+            if (ranged || holdable || offhandWeapon) return false;
+            if (weapon)
+                return (item.InventoryType == INVTYPE_WEAPON || item.InventoryType == INVTYPE_WEAPONMAINHAND) &&
+                    (item.SubClass == ITEM_SUBCLASS_WEAPON_AXE || item.SubClass == ITEM_SUBCLASS_WEAPON_MACE ||
+                     item.SubClass == ITEM_SUBCLASS_WEAPON_DAGGER);
+            break;
         case TALENT_TREE_SHAMAN_ENHANCEMENT:
-            if (item.InventoryType == INVTYPE_2HWEAPON)
-                return false;
+            if (relic) return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_TOTEM;
+            if (ranged || holdable) return false;
+            if (weapon)
+                return OneHand() && (item.SubClass == ITEM_SUBCLASS_WEAPON_AXE ||
+                    item.SubClass == ITEM_SUBCLASS_WEAPON_MACE || item.SubClass == ITEM_SUBCLASS_WEAPON_FIST);
+            break;
+
+        case TALENT_TREE_DRUID_BALANCE:
+        case TALENT_TREE_DRUID_RESTORATION:
+            if (relic) return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_IDOL;
+            if (ranged || shield || offhandWeapon) return false;
+            if (weapon)
+                return ((item.InventoryType == INVTYPE_WEAPON || item.InventoryType == INVTYPE_WEAPONMAINHAND) &&
+                    (item.SubClass == ITEM_SUBCLASS_WEAPON_MACE || item.SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)) ||
+                    (item.InventoryType == INVTYPE_2HWEAPON && item.SubClass == ITEM_SUBCLASS_WEAPON_STAFF);
+            break;
+        case TALENT_TREE_DRUID_FERAL_COMBAT:
+            if (relic) return item.Class == ITEM_CLASS_ARMOR && item.SubClass == ITEM_SUBCLASS_ARMOR_IDOL;
+            if (ranged || shield || holdable || offhandWeapon) return false;
+            if (weapon)
+                return item.InventoryType == INVTYPE_2HWEAPON &&
+                    (item.SubClass == ITEM_SUBCLASS_WEAPON_MACE2 || item.SubClass == ITEM_SUBCLASS_WEAPON_STAFF ||
+                     item.SubClass == ITEM_SUBCLASS_WEAPON_POLEARM);
             break;
         default:
             break;
