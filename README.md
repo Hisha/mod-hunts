@@ -150,3 +150,9 @@ Death and Decay is implemented as true ground-targeted area denial at the hunter
 Psychic Scream shares the same Elite fear DR framework proven by The Ashen Pact: full Hunt-controlled duration, then 50%, then 25%, then immunity until the DR reset window expires. This keeps class identity without recreating the original Warlock fear-lock problem.
 
 The Elite prebuilt cleanup header now covers the complete current Elite roster/templates so reapplying `911_elite_prey.sql` remains idempotent as new archetypes are added.
+
+## 1.0.14-dev - The Farstrider Hunter Elite
+
+Adds Elite prey **The Farstrider**, a Marksmanship-style Hunter encounter built around the existing terrain-safe ranged combat brain. The Farstrider maintains approximately 24 yards with Hunter's Mark, Serpent Sting, Steady Shot, Aimed Shot and Concussive Shot, uses Disengage under pressure, adds Explosive Trap during the final encounter, and uses Deterrence as a low-health defensive window.
+
+The Farstrider also introduces the first Hunt-owned combat companion. Because an NPC creature cannot truthfully use the player's stable/pet subsystem, the Hunt combat brain intercepts the authored Call Pet action and summons **Nightfang**, a temporary hostile wolf from its own dynamic Hunt creature template. Nightfang scales its level to the prey, receives encounter-relative health, attacks the hunter independently, does not count as ordinary tracking progress if killed, and is explicitly removed when the ambush/final prey ends or disappears. No client patch or schema change is required.

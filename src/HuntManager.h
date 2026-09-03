@@ -301,6 +301,7 @@ private:
     std::unordered_map<uint32, uint32> _deathAndDecayTimers;
     std::unordered_map<uint32, float> _deathAndDecayX;
     std::unordered_map<uint32, float> _deathAndDecayY;
+    std::unordered_map<uint32, ObjectGuid> _hunterPetGuids;
     std::vector<HuntZoneDefinition> _zones;
     std::vector<HuntFinalLocationDefinition> _finalLocations;
     std::unordered_map<uint32, uint32> _giverEntries;

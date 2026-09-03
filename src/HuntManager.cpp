@@ -1677,6 +1677,17 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
     if (!_enabled || !player || !killed)
         return;
 
+    // A Hunter Elite companion is part of the encounter, not ordinary tracking
+    // prey. Killing it must never advance the hunter's tracking percentage.
+    for (auto const& [ownerGuid, petGuid] : _hunterPetGuids)
+    {
+        if (!petGuid.IsEmpty() && petGuid == killed->GetGUID())
+        {
+            _hunterPetGuids.erase(ownerGuid);
+            return;
+        }
+    }
+
     // Final prey belongs to the hunt runtime that spawned it, not to whichever
     // player happened to land the killing blow. Resolve encounter ownership by
     // GUID first so a grouped hunter can receive credit when a party member
@@ -1697,6 +1708,14 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
     {
         HuntRuntime& ownerRuntime = *owningRuntime;
         bool finalEncounter = ownerRuntime.ActivePreyFinal;
+        auto petIt = _hunterPetGuids.find(ownerRuntime.CharacterGuid);
+        if (petIt != _hunterPetGuids.end())
+        {
+            if (Player* petOwner = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(ownerRuntime.CharacterGuid)))
+                if (Creature* pet = ObjectAccessor::GetCreature(*petOwner, petIt->second))
+                    pet->DespawnOrUnsummon();
+            _hunterPetGuids.erase(petIt);
+        }
 
         // Ambush prey remains owner-specific. Its death is not a successful
         // completion; ambushes are expected to escape at the configured HP
@@ -2962,6 +2981,7 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
         bool const isDeathAndDecay = runtime.PreyId == 108 && ability.SpellId == 49938;
         bool const isDeathGrip = runtime.PreyId == 108 && ability.SpellId == 49576;
         bool const isMindFreeze = runtime.PreyId == 108 && ability.SpellId == 47528;
+        bool const isHunterPetCall = runtime.PreyId == 109 && ability.SpellId == 883;
         if (isCharge && (distance < 8.0f || distance > 25.0f))
             continue;
         if (isBlink && (!hunt || hunt->CombatStyle != 1 || distance > _rangedPanicRange))
@@ -2996,7 +3016,39 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
 
         if (ability.ChancePct >= 100 || urand(1, 100) <= ability.ChancePct)
         {
-            if (isVanish)
+            if (isHunterPetCall)
+            {
+                // Creature shells cannot use the player stable/pet subsystem.
+                // Resolve a Hunt-owned wolf template and summon it as a hostile
+                // temporary companion instead. One companion may be active per
+                // hunter encounter; ambush/final cleanup removes it explicitly.
+                ObjectGuid& petGuid = _hunterPetGuids[runtime.CharacterGuid];
+                Creature* existingPet = petGuid.IsEmpty() ? nullptr : ObjectAccessor::GetCreature(*player, petGuid);
+                if (!existingPet || !existingPet->IsAlive())
+                {
+                    uint32 const petEntry = sHuntCreatureTemplateMgr.ResolveEntry(1026);
+                    if (petEntry)
+                    {
+                        float const angle = prey->GetAngle(player) + 1.5707963f;
+                        float const x = prey->GetPositionX() + std::cos(angle) * 3.0f;
+                        float const y = prey->GetPositionY() + std::sin(angle) * 3.0f;
+                        float const z = prey->GetPositionZ();
+                        if (TempSummon* pet = prey->SummonCreature(petEntry, x, y, z, prey->GetOrientation(),
+                            TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 300000))
+                        {
+                            pet->SetFaction(14);
+                            pet->SetLevel(prey->GetLevel());
+                            uint32 const petHealth = std::max<uint32>(1, prey->GetMaxHealth() / 4);
+                            pet->SetMaxHealth(petHealth);
+                            pet->SetFullHealth();
+                            pet->AI()->AttackStart(player);
+                            pet->GetMotionMaster()->MoveChase(player);
+                            petGuid = pet->GetGUID();
+                        }
+                    }
+                }
+            }
+            else if (isVanish)
             {
                 // Vanish/reopen is intentionally kept inside the same Hunt
                 // combat encounter. Move behind the hunter while hidden, then
@@ -3066,7 +3118,7 @@ void HuntManager::UpdatePreyAbilities(Player* player, HuntRuntime& runtime, Crea
                 // maintain. Hunt AI owns their cooldowns, so trigger those melee
                 // techniques to make the authored class kit reliable.
                 bool const resourceDrivenMeleeTechnique = runtime.PreyId == 102 || runtime.PreyId == 103 ||
-                    runtime.PreyId == 105 || runtime.PreyId == 106 || runtime.PreyId == 108;
+                    runtime.PreyId == 105 || runtime.PreyId == 106 || runtime.PreyId == 108 || runtime.PreyId == 109;
                 prey->CastSpell(target, ability.SpellId, resourceDrivenMeleeTechnique);
             }
 
@@ -3397,6 +3449,13 @@ void HuntManager::Update(uint32 diff)
         Creature* prey=ObjectAccessor::GetCreature(*p,r.ActivePreyGuid);
         if(!prey)
         {
+            auto petIt = _hunterPetGuids.find(r.CharacterGuid);
+            if (petIt != _hunterPetGuids.end())
+            {
+                if (Creature* pet = ObjectAccessor::GetCreature(*p, petIt->second))
+                    pet->DespawnOrUnsummon();
+                _hunterPetGuids.erase(petIt);
+            }
             _abilityTimers.erase(r.CharacterGuid);
             r.ActivePreyGuid.Clear();
             continue;
@@ -3411,6 +3470,13 @@ void HuntManager::Update(uint32 diff)
             prey->CombatStop(true); prey->SetFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_IMMUNE_TO_PC);
             ChatHandler(p->GetSession()).PSendSysMessage("|cffffff00[Hunts]|r {} breaks away and disappears. Continue tracking it.",h->Name);
             prey->DespawnOrUnsummon(Milliseconds(1500));
+            auto petIt = _hunterPetGuids.find(r.CharacterGuid);
+            if (petIt != _hunterPetGuids.end())
+            {
+                if (Creature* pet = ObjectAccessor::GetCreature(*p, petIt->second))
+                    pet->DespawnOrUnsummon();
+                _hunterPetGuids.erase(petIt);
+            }
             _abilityTimers.erase(r.CharacterGuid);
             r.ActivePreyGuid.Clear();
             if (r.AmbushPending)

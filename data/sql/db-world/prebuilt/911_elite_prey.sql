@@ -1,10 +1,10 @@
--- Hunts 1.0.11-dev - Elite Hunt prey roster
+-- Hunts 1.0.14-dev - Elite Hunt prey roster
 -- Canonical Elite prey content only. Schema changes belong in db-world/updates.
 SET @HUNT_ACTIVATOR_ENTRY := 14999010;
 
-DELETE FROM `hunt_prey_ability` WHERE `prey_id` IN (100,101,102,103,104,105,106,107,108);
-DELETE FROM `hunt_prey` WHERE `id` IN (100,101,102,103,104,105,106,107,108);
-DELETE FROM `hunt_creature_template` WHERE `id` IN (1016,1017,1018,1019,1020,1021,1022,1023,1024);
+DELETE FROM `hunt_prey_ability` WHERE `prey_id` IN (100,101,102,103,104,105,106,107,108,109);
+DELETE FROM `hunt_prey` WHERE `id` IN (100,101,102,103,104,105,106,107,108,109);
+DELETE FROM `hunt_creature_template` WHERE `id` IN (1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026);
 
 -- ---------------------------------------------------------------------------
 -- The Oathbreaker - Retribution Paladin archetype
@@ -281,3 +281,38 @@ INSERT INTO `hunt_prey_ability`
 (108006,108,49924,0,5000,7000,8000,11000,100,3,30,80,55,0,1,0,0,1,'Death Strike below 55% - self-sustain through melee pressure'),
 (108007,108,47528,0,3000,4500,10000,14000,100,3,30,80,0,0,0,0,0,1,'Mind Freeze - held until hunter is casting'),
 (108008,108,46584,1,8000,11000,60000,60000,100,2,55,80,35,0,0,1,0,1,'Raise Dead - once-per-final ghoul pressure below 35%');
+
+-- ---------------------------------------------------------------------------
+-- The Farstrider - Marksmanship Hunter archetype
+-- A Hunt-owned wolf companion is summoned by the combat brain instead of the
+-- player pet subsystem, allowing a stock 3.3.5a client to see a real killable
+-- companion while the hunter maintains ranged pressure and kites.
+-- ---------------------------------------------------------------------------
+INSERT INTO `hunt_creature_template`
+ (`id`,`name`,`base_creature_entry`,`name_override`,`subname_override`,`faction_override`,`rank_override`,
+  `health_modifier_override`,`armor_modifier_override`,`damage_modifier_override`,`enabled`,`comment`) VALUES
+(1025,'Elite Hunt - The Farstrider',16295,'The Farstrider','Hunter of the Long Trail',14,1,1.00,0.95,1.12,1,
+ 'Elite Marksmanship-Hunter-style prey; ranged shots, stings, control, traps, Disengage, and a wolf companion.'),
+(1026,'Elite Hunt - Farstrider Wolf',299,'Nightfang','Farstrider Companion',14,0,1.00,1.00,1.00,1,
+ 'Temporary hostile wolf companion summoned by The Farstrider combat brain.');
+
+INSERT INTO `hunt_prey`
+ (`id`,`name`,`min_level`,`max_level`,`prey_creature_entry`,`prey_template_id`,`activation_gameobject_entry`,
+  `ambush_health_multiplier`,`final_health_multiplier`,`reward_multiplier`,`tier`,`combat_style`,`preferred_range`,
+  `escape_health_pct`,`ambush_count`,`enabled`,`comment`) VALUES
+(109,'The Farstrider',10,80,0,1025,@HUNT_ACTIVATOR_ENTRY,4.75,7.75,2.5,2,1,24.0,50,2,1,
+ 'Elite Hunter archetype; fights beside Nightfang while maintaining range with shots, stings, traps, and Disengage.');
+
+INSERT INTO `hunt_prey_ability`
+ (`id`,`prey_id`,`spell_id`,`target`,`initial_min_ms`,`initial_max_ms`,`cooldown_min_ms`,`cooldown_max_ms`,
+  `chance_pct`,`encounter_mask`,`min_hunter_level`,`max_hunter_level`,`health_below_pct`,`victim_health_below_pct`,`require_melee`,
+  `once_per_encounter`,`require_aura_missing`,`enabled`,`comment`) VALUES
+(109001,109,883,1,0,500,60000,60000,100,3,10,80,0,0,0,1,0,1,'Call Pet - Hunt brain summons Nightfang once per encounter'),
+(109002,109,53338,0,700,1300,30000,36000,100,3,10,80,0,0,0,0,1,1,'Hunter Mark - maintain target pressure'),
+(109003,109,49001,0,1200,2200,15000,18000,100,3,10,80,0,0,0,0,1,1,'Serpent Sting - maintained ranged damage'),
+(109004,109,49052,0,1800,2800,3000,4500,100,3,20,80,0,0,0,0,0,1,'Steady Shot - primary ranged pressure'),
+(109005,109,49050,0,3500,5000,9000,12000,100,3,30,80,0,0,0,0,0,1,'Aimed Shot - ranged burst and healing pressure'),
+(109006,109,5116,0,4500,6500,12000,16000,90,3,20,80,0,0,0,0,1,1,'Concussive Shot - movement control'),
+(109007,109,781,1,6500,9000,18000,24000,100,3,20,80,0,0,0,0,0,1,'Disengage - close-pressure escape handled by ranged brain'),
+(109008,109,49067,1,7000,10000,24000,30000,90,2,40,80,0,0,0,0,0,1,'Explosive Trap - final close-area punishment'),
+(109009,109,19263,1,0,0,60000,60000,100,2,50,80,25,0,0,1,0,1,'Deterrence below 25% - once-per-final defensive window');
