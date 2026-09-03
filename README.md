@@ -170,3 +170,11 @@ Adds the optional **HuntsUI** companion addon for Huntmaster's Seal rewards whil
 When HuntsUI has announced itself for the current login session, selecting the existing Seal reward gossip option closes gossip and opens a token-vendor-style reward frame. The addon provides specialization, reward tier, and equipment-slot selectors, paged item rows with normal item tooltips, Seal prices, affordability dimming, and the current Huntmaster's Seal balance. Clients without HuntsUI continue through the existing specialization/tier/slot/item gossip menus unchanged.
 
 The addon uses the `HUNTS` self-whisper addon-message protocol. The server remains authoritative: the graphical client requests catalog pages and purchases, while `mod-hunts` reuses `BuildSealStoreItems` and `PurchaseSealStoreItem` for eligibility, price, Seal deduction, inventory checks, and soulbinding. Addon store requests are only accepted while the player remains near the Huntmaster whose reward gossip option was selected, so installing HuntsUI does not create a remote Seal vendor. No client patch or database/schema change is required.
+
+
+## Development history
+
+### 1.0.17-dev
+- Fixed the HuntsUI Seal-store open handshake. The Huntmaster is now remembered as soon as the Rewards gossip option is selected, even when the addon's login `HELLO` has not completed yet.
+- An addon's `OPEN` request now acts as a valid late handshake and closes the temporary gossip fallback before returning the graphical Seal catalog.
+- Players without HuntsUI still receive the existing server-side specialization/tier/slot gossip store.

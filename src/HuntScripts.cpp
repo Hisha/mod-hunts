@@ -167,13 +167,21 @@ public:
         if (action == ACTION_SEAL_STORE)
         {
             sealStoreContexts[guid] = {};
+
+            // Always remember the Huntmaster before choosing the UI path.
+            // HuntsUI's OPEN request is sent by the client immediately after the
+            // gossip option is selected.  On a fresh login that request can race
+            // the HELLO handshake, so gating this GUID behind HasHuntsAddon()
+            // created a circular dependency: the addon could ask to open the
+            // store only after the server had already refused to remember the
+            // Huntmaster.
+            huntsAddonStoreGivers[guid] = creature->GetGUID();
+
             if (HasHuntsAddon(player))
-            {
-                huntsAddonStoreGivers[guid] = creature->GetGUID();
                 CloseGossipMenuFor(player);
-            }
             else
                 ShowSealSpecMenu(player, creature);
+
             return true;
         }
 
@@ -587,6 +595,12 @@ public:
                 response = "ERR|The Huntmaster Seal store is not available to you.";
             else
             {
+                // OPEN is also the authoritative late handshake.  If HELLO had
+                // not completed before the player clicked Rewards, replace the
+                // just-opened gossip fallback with HuntsUI now.
+                huntsAddonSessions.insert(guid);
+                CloseGossipMenuFor(player);
+
                 std::vector<SealSpecChoice> specs = GetSealSpecs(player);
                 std::ostringstream out;
                 out << "OPEN|" << sHuntMgr.GetSealBalance(player) << "|";
