@@ -195,7 +195,7 @@ public:
     bool IsSealStoreAvailable(Player const* player) const;
     uint32 GetSealBalance(Player const* player) const;
     void ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel);
-    void ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct);
+    void ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct, uint32 noUpgradeBonusSeals);
     void ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs,
         float rangedArenaRadius);
     uint32 GetSealStoreTierCost(uint8 tier) const;
@@ -274,6 +274,7 @@ private:
     uint32 _sealStoreTierMaxItemLevel[4] = { 219, 232, 251, 264 };
     bool _eliteRewardRequireUpgrade = true;
     float _eliteRewardUpgradePoolPct = 0.70f;
+    uint32 _eliteNoUpgradeBonusSeals = 1;
     float _rangedPanicRange = 10.0f;
     float _rangedRetreatRangePct = 1.0f;
     uint32 _rangedBlinkCooldownMs = 15000;

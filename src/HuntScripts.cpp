@@ -245,7 +245,7 @@ private:
                 if (sHuntMgr.IsEliteAvailableToday(player))
                     AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I seek an Elite Hunt.", GOSSIP_SENDER_MAIN, ACTION_REQUEST_ELITE_HUNT);
                 else
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I have completed today's Elite Hunt.", GOSSIP_SENDER_MAIN, ACTION_HUNT_STATS);
+                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "My Elite assignment is spent for today.", GOSSIP_SENDER_MAIN, ACTION_HUNT_STATS);
             }
         }
         else if (runtime->State == hunts::HuntState::ReadyToTurnIn)

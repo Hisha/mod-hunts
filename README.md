@@ -4,7 +4,7 @@ Standalone AzerothCore WotLK Hunt system. No other custom module is required.
 
 ## Features
 - Repeatable normal Hunts from level 10 through 80.
-- Elite Hunts unlock after 10 completed Hunts and may be completed once per character per day.
+- Elite Hunts unlock after 10 completed Hunts; accepting an Elite consumes that day's assignment, so abandoning cannot reroll the prey.
 - Levels 10-79 remain group-friendly; max-level Elite final completion is solo.
 - Huntmasters in capital cities and guard-direction integration.
 - Zone tracking, ambushes, authored final locations, map POI refresh, activation crystal and final prey.
@@ -123,6 +123,14 @@ Two more class-style Elite prey join the canonical `prebuilt/911_elite_prey.sql`
 - **The Stormcaller** - Enhancement Shaman archetype using Lightning Shield, Stormstrike, Flame Shock, Earth Shock, Earthbind Totem, final-only Magma Totem, and a once-per-final Feral Spirit below 40%. The authored totem package is intentionally limited to Earthbind plus Magma rather than dropping a full four-totem field.
 
 Druid and Shaman player-resource techniques are triggered by Hunt AI just like the existing Warrior/Rogue techniques, avoiding reliance on player-only rage, energy, mana, stance, or combo-point behavior in creature shells. No schema change is required for 1.0.10.
+
+## 1.0.13-dev - Elite assignment lock and no-upgrade Seal fallback
+
+Elite Hunt daily limits are now consumed when the hunter **accepts** an Elite assignment, not only when the Elite is completed. `hunt_stats` tracks daily Elite assignments separately from completion statistics. Abandoning an Elite Hunt still removes the active runtime, but the day's assignment remains consumed, preventing repeated abandon/reaccept rerolls for an easier or preferred prey. Normal Hunts remain freely abandonable. Existing installations must run `data/sql/db-characters/updates/1.0.13_elite_assignment_lock_upgrade.sql`; fresh installs already have the canonical columns.
+
+Level-cap Elite random gear now applies a stricter definition of an upgrade when `Hunts.Elite.RewardRequireUpgrade = 1`: a candidate must exceed both the item level and the spec-weighted power of the currently equipped matching slot. Rings, trinkets, and one-hand weapons compare against the weaker applicable slot. This prevents the fixed item-level-200 reward pool from repeatedly awarding a nominally scored piece after every relevant slot has already progressed beyond item level 200.
+
+When no legitimate level-cap Elite equipment upgrade remains, the item reward is skipped and the hunter receives configurable bonus Huntmaster's Seals instead. `Hunts.Elite.NoUpgradeBonusSeals` defaults to `1` and is added to the normal `Hunts.Elite.SealsPerCompletion` award. Bag-full failures do not grant the fallback bonus because a valid upgrade existed; the player simply lacked inventory space.
 
 ## 1.0.12-dev - Terrain-safe ranged movement and Death and Decay Grip
 

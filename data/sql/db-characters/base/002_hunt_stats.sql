@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS `hunt_stats` (
   `elite_total_completed` INT UNSIGNED NOT NULL DEFAULT 0,
   `elite_daily_completed` INT UNSIGNED NOT NULL DEFAULT 0,
   `elite_daily_reset_date` DATE NULL,
+  `elite_daily_accepted` INT UNSIGNED NOT NULL DEFAULT 0,
+  `elite_daily_accept_reset_date` DATE NULL,
   `huntmaster_seals` INT UNSIGNED NOT NULL DEFAULT 0,
   `last_completed_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`guid`)

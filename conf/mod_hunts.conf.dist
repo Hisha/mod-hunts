@@ -57,9 +57,12 @@ Hunts.Elite.EndgameRewardMaxItemLevel = 200
 # Elite random gear can be restricted to actual upgrades over the character's
 # currently equipped item in the matching slot. UpgradePoolPct controls how
 # close a candidate must be to the best detected upgrade to enter the random
-# selection pool. 0.70 = within the best 70% upgrade band.
+# selection pool. 0.70 = within the best 70% upgrade band. When upgrade
+# filtering leaves no valid level-cap Elite item, NoUpgradeBonusSeals is added
+# on top of the normal Seal completion reward instead of awarding vendor trash.
 Hunts.Elite.RewardRequireUpgrade = 1
 Hunts.Elite.RewardUpgradePoolPct = 0.70
+Hunts.Elite.NoUpgradeBonusSeals = 1
 
 # Ranged Elite combat behavior. PanicRange is where escape tools such as Blink
 # become eligible. RetreatRangePct is multiplied by each prey's SQL preferred_range

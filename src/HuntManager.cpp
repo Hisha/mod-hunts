@@ -496,6 +496,59 @@ float GetEquippedPowerForCandidate(Player* player, uint32 spec, RewardRole role,
     }
 }
 
+uint32 GetEquippedItemLevel(Player* player, uint8 equipmentSlot)
+{
+    if (!player)
+        return 0;
+
+    Item* equipped = player->GetItemByPos(INVENTORY_SLOT_BAG_0, equipmentSlot);
+    return equipped && equipped->GetTemplate() ? equipped->GetTemplate()->ItemLevel : 0;
+}
+
+uint32 GetEquippedItemLevelForCandidate(Player* player, ItemTemplate const& candidate)
+{
+    switch (candidate.InventoryType)
+    {
+        case INVTYPE_HEAD: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_HEAD);
+        case INVTYPE_NECK: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_NECK);
+        case INVTYPE_SHOULDERS: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_SHOULDERS);
+        case INVTYPE_CLOAK: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_BACK);
+        case INVTYPE_CHEST:
+        case INVTYPE_ROBE: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_CHEST);
+        case INVTYPE_WRISTS: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_WRISTS);
+        case INVTYPE_HANDS: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_HANDS);
+        case INVTYPE_WAIST: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_WAIST);
+        case INVTYPE_LEGS: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_LEGS);
+        case INVTYPE_FEET: return GetEquippedItemLevel(player, EQUIPMENT_SLOT_FEET);
+        case INVTYPE_FINGER:
+            return std::min(GetEquippedItemLevel(player, EQUIPMENT_SLOT_FINGER1),
+                GetEquippedItemLevel(player, EQUIPMENT_SLOT_FINGER2));
+        case INVTYPE_TRINKET:
+            return std::min(GetEquippedItemLevel(player, EQUIPMENT_SLOT_TRINKET1),
+                GetEquippedItemLevel(player, EQUIPMENT_SLOT_TRINKET2));
+        case INVTYPE_SHIELD:
+        case INVTYPE_HOLDABLE:
+        case INVTYPE_WEAPONOFFHAND:
+            return GetEquippedItemLevel(player, EQUIPMENT_SLOT_OFFHAND);
+        case INVTYPE_RANGED:
+        case INVTYPE_RANGEDRIGHT:
+        case INVTYPE_THROWN:
+        case INVTYPE_RELIC:
+            return GetEquippedItemLevel(player, EQUIPMENT_SLOT_RANGED);
+        case INVTYPE_WEAPON:
+        {
+            uint32 const mainLevel = GetEquippedItemLevel(player, EQUIPMENT_SLOT_MAINHAND);
+            uint32 const offLevel = GetEquippedItemLevel(player, EQUIPMENT_SLOT_OFFHAND);
+            return offLevel ? std::min(mainLevel, offLevel) : mainLevel;
+        }
+        case INVTYPE_WEAPONMAINHAND:
+        case INVTYPE_2HWEAPON:
+            return GetEquippedItemLevel(player, EQUIPMENT_SLOT_MAINHAND);
+        default:
+            return 0;
+    }
+}
+
 bool IsSpecCompatibleEquipment(uint32 spec, ItemTemplate const& item)
 {
     switch (spec)
@@ -1080,7 +1133,7 @@ bool HuntManager::IsEliteAvailableToday(Player const* player) const
     if (!player)
         return false;
     if (QueryResult q = CharacterDatabase.Query(
-        "SELECT IF(`elite_daily_reset_date`=CURRENT_DATE(),`elite_daily_completed`,0) "
+        "SELECT IF(`elite_daily_accept_reset_date`=CURRENT_DATE(),`elite_daily_accepted`,0) "
         "FROM `hunt_stats` WHERE `guid`={}", player->GetGUID().GetCounter()))
         return q->Fetch()[0].Get<uint32>() < _eliteDailyLimit;
     return true;
@@ -1107,10 +1160,11 @@ uint32 HuntManager::GetSealBalance(Player const* player) const
     return 0;
 }
 
-void HuntManager::ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct)
+void HuntManager::ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct, uint32 noUpgradeBonusSeals)
 {
     _eliteRewardRequireUpgrade = requireUpgrade;
     _eliteRewardUpgradePoolPct = std::max(0.0f, std::min(1.0f, upgradePoolPct));
+    _eliteNoUpgradeBonusSeals = noUpgradeBonusSeals;
 }
 
 void HuntManager::ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs,
@@ -1302,7 +1356,7 @@ bool HuntManager::RequestEliteHunt(Player* player, Creature* giver, std::string&
     if(player->GetLevel()<_minimumLevel){message="You are not yet ready for an Elite Hunt.";return false;}
     if(HasActiveHunt(player)){message="You already have an active hunt.";return false;}
     if(!IsEliteUnlocked(player)){message="Elite Hunts unlock after "+std::to_string(_eliteRequiredNormalCompletions)+" completed normal hunts.";return false;}
-    if(!IsEliteAvailableToday(player)){message="You have already completed an Elite Hunt today. Return tomorrow for another challenge.";return false;}
+    if(!IsEliteAvailableToday(player)){message="You have already accepted your Elite Hunt assignment for today. Return tomorrow for another challenge.";return false;}
 
     std::vector<HuntDefinition const*> eligible;
     for(auto const& [id,h]:_hunts)
@@ -1317,7 +1371,18 @@ bool HuntManager::RequestEliteHunt(Player* player, Creature* giver, std::string&
     if(!zone){message="I have no suitable Elite hunting ground for your level.";return false;}
 
     HuntDefinition const& hunt=*eligible[urand(0,static_cast<uint32>(eligible.size()-1))];
-    HuntRuntime r; r.CharacterGuid=player->GetGUID().GetCounter(); r.PreyId=hunt.Id; r.GiverEntry=giver->GetEntry();
+
+    // Accepting an Elite Hunt consumes today's assignment immediately. This is
+    // deliberately separate from completion statistics so abandoning cannot be
+    // used to reroll prey while a completed Elite is still counted accurately.
+    uint32 const characterGuid = player->GetGUID().GetCounter();
+    CharacterDatabase.DirectExecute(
+        "INSERT INTO `hunt_stats` (`guid`,`elite_daily_accepted`,`elite_daily_accept_reset_date`) "
+        "VALUES ({},1,CURRENT_DATE()) ON DUPLICATE KEY UPDATE "
+        "`elite_daily_accepted`=IF(`elite_daily_accept_reset_date`=CURRENT_DATE(),`elite_daily_accepted`+1,1),"
+        "`elite_daily_accept_reset_date`=CURRENT_DATE()", characterGuid);
+
+    HuntRuntime r; r.CharacterGuid=characterGuid; r.PreyId=hunt.Id; r.GiverEntry=giver->GetEntry();
     r.GiverSpawnId=giver->GetSpawnId(); r.ZoneId=zone->ZoneId; r.State=HuntState::Tracking;
     _runtimes[r.CharacterGuid]=r; SaveRuntime(r);
     message="Elite quarry: "+hunt.Name+". Travel to "+zone->Name+
@@ -1329,8 +1394,18 @@ bool HuntManager::AbandonHunt(Player* player, std::string& message)
 {
     if(!player||!HasActiveHunt(player)){message="You do not have an active hunt.";return false;}
     auto it=_runtimes.find(player->GetGUID().GetCounter());
-    if(it!=_runtimes.end()) RemoveFinalActivator(player,it->second);
-    DeleteRuntime(player->GetGUID().GetCounter()); message="Your hunt has been abandoned."; return true;
+    bool eliteHunt = false;
+    if (it != _runtimes.end())
+    {
+        if (HuntDefinition const* hunt = GetDefinition(it->second.PreyId))
+            eliteHunt = hunt->Tier == 2;
+        RemoveFinalActivator(player,it->second);
+    }
+    DeleteRuntime(player->GetGUID().GetCounter());
+    message = eliteHunt
+        ? "Your Elite Hunt has been abandoned. Today's Elite assignment is forfeited; return tomorrow for another."
+        : "Your hunt has been abandoned.";
+    return true;
 }
 
 bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& message)
@@ -1444,10 +1519,15 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
             float const candidatePower = ScoreRewardPower(player, activeTalentTree, rewardRole, itemTemplate);
             upgradeDelta = candidatePower - equippedPower;
 
-            // Elite rewards are intended to help the character gear up. If the
-            // candidate is not actually stronger than what is already equipped
-            // in the matching slot, do not put it in the random reward pool.
-            if (_eliteRewardRequireUpgrade && upgradeDelta <= 1.0f)
+            // Elite rewards are intended to help the character gear up. When
+            // upgrades are required, the candidate must beat both the matching
+            // equipped slot's item level and the spec-weighted power score. This
+            // prevents an item-level-200 piece from repeatedly being selected
+            // once that slot is already wearing 200+ gear. Rings/trinkets and
+            // one-hand weapons compare against the weaker of their valid slots.
+            uint32 const equippedItemLevel = GetEquippedItemLevelForCandidate(player, itemTemplate);
+            if (_eliteRewardRequireUpgrade &&
+                (itemTemplate.ItemLevel <= equippedItemLevel || upgradeDelta <= 1.0f))
                 continue;
         }
 
@@ -1517,6 +1597,10 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         }
     }
 
+    bool const noUpgradeEliteReward = levelCapElite && _eliteRewardRequireUpgrade && candidates.empty();
+    uint32 const bonusSeals = (sealEligible && noUpgradeEliteReward) ? _eliteNoUpgradeBonusSeals : 0;
+    uint32 const sealsAwarded = sealEligible ? (_eliteSealsPerCompletion + bonusSeals) : 0;
+
     char const* qualityColumn = nullptr;
     if (rewardedItemId)
     {
@@ -1532,7 +1616,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
              << (qualityColumn && std::string(qualityColumn)=="blues_received" ? 1 : 0) << ","
              << (qualityColumn && std::string(qualityColumn)=="epics_received" ? 1 : 0) << ","
              << (eliteHunt ? 1 : 0) << "," << (eliteHunt ? 1 : 0) << ","
-             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << (sealEligible ? _eliteSealsPerCompletion : 0) << ",CURRENT_TIMESTAMP()) "
+             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << sealsAwarded << ",CURRENT_TIMESTAMP()) "
              << "ON DUPLICATE KEY UPDATE `total_completed`=`total_completed`+1, "
              << "`daily_completed`=IF(`daily_reset_date`=CURRENT_DATE(),`daily_completed`+1,1), "
              << "`daily_reset_date`=CURRENT_DATE(),";
@@ -1540,8 +1624,8 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         statsSql << "`elite_total_completed`=`elite_total_completed`+1,"
                  << "`elite_daily_completed`=IF(`elite_daily_reset_date`=CURRENT_DATE(),`elite_daily_completed`+1,1),"
                  << "`elite_daily_reset_date`=CURRENT_DATE(),";
-    if (sealEligible)
-        statsSql << "`huntmaster_seals`=`huntmaster_seals`+" << _eliteSealsPerCompletion << ",";
+    if (sealsAwarded)
+        statsSql << "`huntmaster_seals`=`huntmaster_seals`+" << sealsAwarded << ",";
     if (qualityColumn)
         statsSql << "`" << qualityColumn << "`=`" << qualityColumn << "`+1,";
     statsSql << "`last_completed_at`=CURRENT_TIMESTAMP()";
@@ -1559,19 +1643,23 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     else if (candidates.empty())
     {
         if (eliteHunt)
-            rewardMessage << ". Your equipped gear is already stronger than the available Elite Hunt reward pool";
+        {
+            rewardMessage << ". No suitable equipment upgrade was found";
+            if (bonusSeals)
+                rewardMessage << "; you receive " << bonusSeals << " additional Huntmaster's Seal" << (bonusSeals == 1 ? "" : "s") << " instead";
+        }
         else
             rewardMessage << ". No suitable item reward was found for this level/quality roll";
     }
     else
         rewardMessage << ". Your bags were too full for the item reward";
-    if (sealEligible)
+    if (sealsAwarded)
     {
-        uint32 sealBalance = _eliteSealsPerCompletion;
+        uint32 sealBalance = sealsAwarded;
         if (QueryResult seals = CharacterDatabase.Query(
             "SELECT `huntmaster_seals` FROM `hunt_stats` WHERE `guid`={}", r.CharacterGuid))
             sealBalance = seals->Fetch()[0].Get<uint32>();
-        rewardMessage << ", and " << _eliteSealsPerCompletion << " Huntmaster's Seal" << (_eliteSealsPerCompletion == 1 ? "" : "s") << " (" << sealBalance << " total)";
+        rewardMessage << ", and " << sealsAwarded << " Huntmaster's Seal" << (sealsAwarded == 1 ? "" : "s") << " total for this Elite Hunt (" << sealBalance << " total balance)";
     }
     rewardMessage << ".";
 

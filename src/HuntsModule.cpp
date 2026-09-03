@@ -37,6 +37,7 @@ enum class HuntsConfig
     EliteEndgameRewardMaxItemLevel,
     EliteRewardRequireUpgrade,
     EliteRewardUpgradePoolPct,
+    EliteNoUpgradeBonusSeals,
     EliteRangedPanicRange,
     EliteRangedRetreatRangePct,
     EliteRangedBlinkCooldownMs,
@@ -86,6 +87,7 @@ public:
         SetConfigValue<uint32>(HuntsConfig::EliteEndgameRewardMaxItemLevel, "Hunts.Elite.EndgameRewardMaxItemLevel", 200);
         SetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade, "Hunts.Elite.RewardRequireUpgrade", true);
         SetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct, "Hunts.Elite.RewardUpgradePoolPct", 0.70f);
+        SetConfigValue<uint32>(HuntsConfig::EliteNoUpgradeBonusSeals, "Hunts.Elite.NoUpgradeBonusSeals", 1);
         SetConfigValue<float>(HuntsConfig::EliteRangedPanicRange, "Hunts.Elite.Ranged.PanicRange", 10.0f);
         SetConfigValue<float>(HuntsConfig::EliteRangedRetreatRangePct, "Hunts.Elite.Ranged.RetreatRangePct", 1.0f);
         SetConfigValue<uint32>(HuntsConfig::EliteRangedBlinkCooldownMs, "Hunts.Elite.Ranged.BlinkCooldownMs", 15000);
@@ -162,7 +164,8 @@ public:
             huntsConfig.GetConfigValue<float>(HuntsConfig::SharedFinalCreditRadius));
         sHuntMgr.ConfigureEliteRewardTargeting(
             huntsConfig.GetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade),
-            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct));
+            huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::EliteNoUpgradeBonusSeals));
         sHuntMgr.ConfigureEliteCombat(
             huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedPanicRange),
             huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRangedRetreatRangePct),
