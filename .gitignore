@@ -1,0 +1,11 @@
+# Build/editor artifacts
+build/
+cmake-build-*/
+*.user
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Local module configuration
+conf/mod_hunts.conf

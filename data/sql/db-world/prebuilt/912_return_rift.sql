@@ -10,6 +10,6 @@ INSERT INTO `gameobject_template`
      `Data16`,`Data17`,`Data18`,`Data19`,`Data20`,`Data21`,`Data22`,`Data23`,
      `AIName`,`ScriptName`,`VerifiedBuild`)
 VALUES
-    (14999011,10,9529,'Return Rift','','','',1.0,
+    (14999011,10,1327,'Return Rift','','','',1.0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      '','mod_hunts_return_rift',12340);
