@@ -2052,7 +2052,7 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
                 }
 
                 ChatHandler(hunter->GetSession()).SendSysMessage(
-                    "|cff00ff00[Hunts]|r Your quarry is dead. Return to the Huntmaster who gave you the contract.");
+                    "|cff00ff00[Hunts]|r Your quarry is dead. A Return Rift has opened nearby and will remain for 2 minutes.");
             }
         }
         else
