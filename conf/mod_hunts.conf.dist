@@ -99,3 +99,9 @@ Hunts.SealStore.Tier3.MaxItemLevel = 251
 Hunts.SealStore.Tier4.Cost = 30
 Hunts.SealStore.Tier4.MinItemLevel = 264
 Hunts.SealStore.Tier4.MaxItemLevel = 264
+# Optional return to the issuing Huntmaster after completion; does not turn in.
+Hunts.ReturnRift.Enable = 1
+# Clamped to 1-120 seconds. Existing rifts retain their original deadline.
+Hunts.ReturnRift.DurationSeconds = 120
+# Near-position distance in yards, clamped to 1-10; non-finite values use 3.
+Hunts.ReturnRift.ArrivalDistance = 3.0

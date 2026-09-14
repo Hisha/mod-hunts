@@ -4,6 +4,7 @@
 #include "Define.h"
 #include "ObjectGuid.h"
 
+#include <chrono>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -160,6 +161,12 @@ struct HuntRuntime
     ObjectGuid ActivePreyGuid;
     bool ActivePreyFinal = false;
     ObjectGuid FinalActivatorGuid;
+    // Transient opportunity in this hunt, never restored on login/restart.
+    ObjectGuid ReturnRiftGuid;
+    uint32 ReturnRiftMap = 0;
+    uint32 ReturnRiftInstance = 0;
+    std::chrono::steady_clock::time_point ReturnRiftExpires;
+
 };
 
 class HuntManager
@@ -173,6 +180,9 @@ public:
         uint8 eliteSealMinimumLevel, uint32 eliteSealsPerCompletion, uint8 eliteEndgameRewardLevel,
         uint32 eliteEndgameRewardMinItemLevel, uint32 eliteEndgameRewardMaxItemLevel,
         uint8 trackingProgressMin, uint8 trackingProgressMax, float groupCreditRadius, float sharedFinalCreditRadius);
+    void ConfigureReturnRift(bool enabled, uint32 duration, float arrivalDistance);
+    void ClearReturnRift(Player* player);
+    bool OnReturnRiftUsed(Player* player, GameObject* object, std::string& message);
     void Reset();
     void LoadDefinitions();
     void Initialize();
@@ -229,6 +239,11 @@ public:
 
 private:
     HuntManager() = default;
+    void RemoveReturnRift(HuntRuntime& runtime, char const* reason);
+    bool _returnRiftEnabled = true;
+    uint32 _returnRiftDuration = 120;
+    float _returnRiftArrivalDistance = 3.0f;
+
 
     void ApplyFinalLocationLevelAnalysis(HuntFinalLocationDefinition& location, uint32 samples, double avgMinLevel, double avgMaxLevel);
     void AnalyzeFinalLocationLevels(HuntFinalLocationDefinition& location);

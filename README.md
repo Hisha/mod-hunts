@@ -8,6 +8,7 @@ Standalone Hunt gameplay module for AzerothCore WotLK 3.3.5a. No other custom se
 - Huntmasters in major capitals/hubs with stock guard-direction integration.
 - Zone tracking, required ambush encounters, authored final locations, map POI guidance, activation crystal, and final prey encounter.
 - Group-friendly normal Hunt progression with configurable nearby credit.
+- Optional red Return Rift after completion, with an independent single-use return for each credited hunter.
 - Data-driven normal and Elite prey, including class-style Elite combat brains and authored abilities.
 - Level-aware and spec-aware equipment rewards.
 - Level-80 Huntmaster's Seal progression with configurable reward tiers.
@@ -262,3 +263,21 @@ The addon uses the `HUNTS` self-whisper addon-message protocol. The server remai
 - Fixed the HuntsUI Seal-store open handshake. The Huntmaster is now remembered as soon as the Rewards gossip option is selected, even when the addon's login `HELLO` has not completed yet.
 - An addon's `OPEN` request now acts as a valid late handshake and closes the temporary gossip fallback before returning the graphical Seal catalog.
 - Players without HuntsUI still receive the existing server-side specialization/tier/slot gossip store.
+
+## Return Rift
+
+After existing final-prey completion credit is awarded, a temporary red portal appears at the prey's death location. Each credited hunter can use it once to return near their issuing Huntmaster, then interact normally to collect the hunt reward. Clicking the rift never turns in the hunt or changes rewards. Group members have independent opportunities; the object remains until all opportunities are cleared or it expires.
+
+```ini
+Hunts.ReturnRift.Enable = 1
+Hunts.ReturnRift.DurationSeconds = 120
+Hunts.ReturnRift.ArrivalDistance = 3.0
+```
+
+Duration is clamped to 1–120 seconds, and arrival distance to 1–10 yards. Disabling the feature clears existing opportunities; duration changes affect new rifts. Logging uses the debug-level `module.hunts` category and does not require `Hunts.Debug` (which also enables authoring commands).
+
+Apply `data/sql/db-world/prebuilt/912_return_rift.sql` to the world database and rebuild/restart. It convergently defines object **14999011**, using stock red portal display **9529**; no character schema migration or client patch is needed. Logout, abandonment, turn-in, reset and expiration revoke the opportunity. Login/restart never recreates it.
+
+The existing saved `giver_spawn_id` and `giver_entry` identify the destination, including hunts resumed after a restart. The exact living, phase-compatible Huntmaster is resolved on its world map and positioned near using the core API. A missing/dead issuer, dynamically summoned issuer without a database spawn ID, or issuer inside an instance cannot provide a rift destination; the click fails without consuming the opportunity. Normal return remains available. Completed hunts loaded at startup do not receive new rifts.
+
+See [Return Rift implementation and testing](RETURN_RIFT.md) for installation, verification, limitations and the in-game test checklist.

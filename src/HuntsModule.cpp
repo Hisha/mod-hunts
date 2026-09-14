@@ -59,6 +59,9 @@ enum class HuntsConfig
     TrackingProgressMax,
     GroupCreditRadius,
     SharedFinalCreditRadius,
+    ReturnRiftEnable,
+    ReturnRiftDuration,
+    ReturnRiftArrivalDistance,
     Count
 };
 
@@ -68,6 +71,9 @@ public:
     HuntsConfigData() : ConfigValueCache(HuntsConfig::Count) { }
     void BuildConfigCache() override
     {
+        SetConfigValue<bool>(HuntsConfig::ReturnRiftEnable, "Hunts.ReturnRift.Enable", true);
+        SetConfigValue<uint32>(HuntsConfig::ReturnRiftDuration, "Hunts.ReturnRift.DurationSeconds", 120);
+        SetConfigValue<float>(HuntsConfig::ReturnRiftArrivalDistance, "Hunts.ReturnRift.ArrivalDistance", 3.0f);
         SetConfigValue<bool>(HuntsConfig::Enabled, "Hunts.Enable", true);
         SetConfigValue<bool>(HuntsConfig::Debug, "Hunts.Debug", false);
         SetConfigValue<uint32>(HuntsConfig::MinimumLevel, "Hunts.MinimumLevel", 10);
@@ -162,6 +168,10 @@ public:
             static_cast<uint8>(std::min<uint32>(100, huntsConfig.GetConfigValue<uint32>(HuntsConfig::TrackingProgressMax))),
             huntsConfig.GetConfigValue<float>(HuntsConfig::GroupCreditRadius),
             huntsConfig.GetConfigValue<float>(HuntsConfig::SharedFinalCreditRadius));
+        sHuntMgr.ConfigureReturnRift(
+            huntsConfig.GetConfigValue<bool>(HuntsConfig::ReturnRiftEnable),
+            huntsConfig.GetConfigValue<uint32>(HuntsConfig::ReturnRiftDuration),
+            huntsConfig.GetConfigValue<float>(HuntsConfig::ReturnRiftArrivalDistance));
         sHuntMgr.ConfigureEliteRewardTargeting(
             huntsConfig.GetConfigValue<bool>(HuntsConfig::EliteRewardRequireUpgrade),
             huntsConfig.GetConfigValue<float>(HuntsConfig::EliteRewardUpgradePoolPct),

@@ -9,6 +9,7 @@
 #include "DBCStores.h"
 #include "Log.h"
 #include "Map.h"
+#include "MapMgr.h"
 #include "MotionMaster.h"
 #include "ObjectMgr.h"
 #include "PathGenerator.h"
@@ -799,8 +800,107 @@ void HuntManager::Configure(bool enabled, uint8 minimumLevel, float xpMultiplier
     _sharedFinalCreditRadius = std::max(0.0f, sharedFinalCreditRadius);
 }
 
+void HuntManager::ConfigureReturnRift(bool enabled, uint32 duration, float arrivalDistance)
+{
+    _returnRiftEnabled = enabled;
+    _returnRiftDuration = std::clamp<uint32>(duration, 1, 120);
+    _returnRiftArrivalDistance = std::isfinite(arrivalDistance) ? std::clamp(arrivalDistance, 1.0f, 10.0f) : 3.0f;
+    if (!enabled)
+        for (auto& [guid, runtime] : _runtimes)
+            RemoveReturnRift(runtime, "feature disabled");
+}
+
+void HuntManager::RemoveReturnRift(HuntRuntime& runtime, char const* reason)
+{
+    if (runtime.ReturnRiftGuid.IsEmpty())
+        return;
+    ObjectGuid const objectGuid = runtime.ReturnRiftGuid;
+    runtime.ReturnRiftGuid.Clear();
+    LOG_DEBUG("module.hunts", "[Hunts] Return Rift cleanup character {} hunt {}: {}.",
+        runtime.CharacterGuid, runtime.PreyId, reason);
+    // Keep the shared object until the last credited hunter loses their grant.
+    for (auto const& [guid, other] : _runtimes)
+        if (other.ReturnRiftGuid == objectGuid)
+            return;
+    if (Map* map = sMapMgr->FindMap(runtime.ReturnRiftMap, runtime.ReturnRiftInstance))
+        if (GameObject* object = map->GetGameObject(objectGuid))
+            object->Delete();
+}
+
+void HuntManager::ClearReturnRift(Player* player)
+{
+    if (!player)
+        return;
+    auto it = _runtimes.find(player->GetGUID().GetCounter());
+    if (it != _runtimes.end())
+        RemoveReturnRift(it->second, "logout");
+}
+
+bool HuntManager::OnReturnRiftUsed(Player* player, GameObject* object, std::string& message)
+{
+    auto reject = [&](char const* reason)
+    {
+        message = reason;
+        LOG_DEBUG("module.hunts", "[Hunts] Return Rift rejected character {}: {}",
+            player ? player->GetGUID().GetCounter() : 0, reason);
+        return false;
+    };
+    if (!_enabled || !_returnRiftEnabled || !player || !object)
+        return reject("Return Rifts are unavailable.");
+    auto it = _runtimes.find(player->GetGUID().GetCounter());
+    if (it == _runtimes.end() || it->second.State != HuntState::ReadyToTurnIn ||
+        it->second.ReturnRiftGuid.IsEmpty() || it->second.ReturnRiftGuid != object->GetGUID())
+        return reject("You have no return opportunity through this rift.");
+    HuntRuntime& runtime = it->second;
+    if (std::chrono::steady_clock::now() >= runtime.ReturnRiftExpires)
+    {
+        RemoveReturnRift(runtime, "expired at interaction");
+        return reject("Your Return Rift has expired.");
+    }
+    if (object->GetEntry() != 14999011 || !object->IsInWorld() ||
+        player->GetMap() != object->GetMap() || !player->InSamePhase(object) ||
+        !player->IsWithinDistInMap(object, INTERACTION_DISTANCE))
+        return reject("You must be beside the Return Rift.");
+    if (!player->IsAlive() || player->IsInCombat() || player->IsInFlight() || player->IsBeingTeleported())
+        return reject("You cannot return while dead, in combat, flying, or teleporting.");
+
+    // The persisted spawn ID is authoritative, including after a server restart
+    // during tracking. Never substitute another spawn of the same NPC entry.
+    CreatureData const* spawn = sObjectMgr->GetCreatureData(runtime.GiverSpawnId);
+    if (!spawn || spawn->id != runtime.GiverEntry)
+        return reject("Your issuing Huntmaster spawn is unavailable. Return normally.");
+    MapEntry const* mapEntry = sMapStore.LookupEntry(spawn->mapid);
+    if (!mapEntry || mapEntry->Instanceable())
+        return reject("This Huntmaster's map does not support Return Rifts.");
+    Map* destinationMap = sMapMgr->CreateBaseMap(spawn->mapid);
+    if (!destinationMap)
+        return reject("Your Huntmaster's map is unavailable.");
+    destinationMap->LoadGrid(spawn->posX, spawn->posY);
+    auto const range = destinationMap->GetCreatureBySpawnIdStore().equal_range(runtime.GiverSpawnId);
+    Creature* giver = nullptr;
+    for (auto candidate = range.first; candidate != range.second; ++candidate)
+        if (candidate->second->GetEntry() == runtime.GiverEntry && candidate->second->IsInWorld() &&
+            candidate->second->IsAlive() && candidate->second->InSamePhase(player))
+        {
+            giver = candidate->second;
+            break;
+        }
+    if (!giver)
+        return reject("Your issuing Huntmaster is unavailable. Try again or return normally.");
+    Position const arrival = giver->GetNearPosition(_returnRiftArrivalDistance, 0.0f);
+    if (!player->TeleportTo(spawn->mapid, arrival.GetPositionX(), arrival.GetPositionY(),
+        arrival.GetPositionZ(), arrival.GetOrientation()))
+        return reject("Teleport failed. Your return opportunity is still available.");
+    LOG_DEBUG("module.hunts", "[Hunts] Return Rift used by character {} hunt {} to Huntmaster spawn {}.",
+        runtime.CharacterGuid, runtime.PreyId, runtime.GiverSpawnId);
+    RemoveReturnRift(runtime, "used");
+    return true;
+}
+
 void HuntManager::Reset()
 {
+    for (auto& [guid, runtime] : _runtimes)
+        RemoveReturnRift(runtime, "module reset");
     _hunts.clear();
     _preyAbilities.clear();
     _abilityTimers.clear();
@@ -1073,6 +1173,8 @@ void HuntManager::SaveRuntime(HuntRuntime const& r)
 
 void HuntManager::DeleteRuntime(uint32 guid)
 {
+    if (auto it = _runtimes.find(guid); it != _runtimes.end())
+        RemoveReturnRift(it->second, "hunt removed");
     CharacterDatabase.Execute("DELETE FROM `hunt_runtime` WHERE `guid`={}", guid);
     _abilityTimers.erase(guid);
     _movementReactionTimers.erase(guid);
@@ -1873,6 +1975,8 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
 
         if (ownerEligible)
         {
+            GameObject* returnRift = nullptr;
+            auto const riftExpiry = std::chrono::steady_clock::now() + std::chrono::seconds(_returnRiftDuration);
             uint32 preyId = ownerRuntime.PreyId;
             uint32 zoneId = ownerRuntime.ZoneId;
             auto* creditedGroup = owner->GetGroup();
@@ -1921,6 +2025,31 @@ void HuntManager::OnCreatureKill(Player* player, Creature* killed)
                 RemoveFinalActivator(hunter, runtime);
                 runtime.State = HuntState::ReadyToTurnIn;
                 SaveRuntime(runtime);
+
+                // Credit is already final. One map-owned object, independent runtime grants.
+                if (_returnRiftEnabled)
+                {
+                    if (!returnRift)
+                    {
+                        returnRift = killed->GetMap()->SummonGameObject(14999011,
+                            *killed, 0.0f, 0.0f, 0.0f, 1.0f, _returnRiftDuration, false);
+                        if (returnRift)
+                        {
+                            returnRift->SetPhaseMask(killed->GetPhaseMask(), true);
+                            LOG_DEBUG("module.hunts", "[Hunts] Return Rift created for prey {} ({} seconds).", preyId, _returnRiftDuration);
+                        }
+                        else
+                            LOG_DEBUG("module.hunts", "[Hunts] Return Rift creation failed for character {} hunt {}.", guid, runtime.PreyId);
+                    }
+                    if (returnRift)
+                    {
+                        runtime.ReturnRiftGuid = returnRift->GetGUID();
+                        runtime.ReturnRiftMap = killed->GetMapId();
+                        runtime.ReturnRiftInstance = killed->GetInstanceId();
+                        runtime.ReturnRiftExpires = riftExpiry;
+                        LOG_DEBUG("module.hunts", "[Hunts] Return Rift eligible character {} hunt {}.", guid, runtime.PreyId);
+                    }
+                }
 
                 ChatHandler(hunter->GetSession()).SendSysMessage(
                     "|cff00ff00[Hunts]|r Your quarry is dead. Return to the Huntmaster who gave you the contract.");
@@ -3522,6 +3651,9 @@ bool HuntManager::ForceFinal(Player* player, std::string& message)
 
 void HuntManager::Update(uint32 diff)
 {
+    for (auto& [guid, runtime] : _runtimes)
+        if (!runtime.ReturnRiftGuid.IsEmpty() && std::chrono::steady_clock::now() >= runtime.ReturnRiftExpires)
+            RemoveReturnRift(runtime, "expired");
     if(!_enabled) return; if(_updateTimerMs>diff){_updateTimerMs-=diff;return;} _updateTimerMs=250;
 
     bool refreshFinalPoi = false;

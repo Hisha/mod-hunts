@@ -666,6 +666,21 @@ public:
     }
 };
 
+class HuntReturnRiftScript final : public GameObjectScript
+{
+public:
+    HuntReturnRiftScript() : GameObjectScript("mod_hunts_return_rift") { }
+
+    bool OnGossipHello(Player* player, GameObject* object) override
+    {
+        std::string message;
+        if (!sHuntMgr.OnReturnRiftUsed(player, object, message) && player)
+            ChatHandler(player->GetSession()).SendSysMessage(message);
+        // Always suppress goober default use: no cooldown, spell or shared despawn.
+        return true;
+    }
+};
+
 class HuntActivationScript final : public GameObjectScript
 {
 public:
@@ -799,6 +814,7 @@ public:
         if (!player)
             return;
         uint32 const guid = player->GetGUID().GetCounter();
+        sHuntMgr.ClearReturnRift(player);
         huntsAddonSessions.erase(guid);
         huntsAddonStoreGivers.erase(guid);
         huntsAddonCatalogs.erase(guid);
@@ -813,5 +829,6 @@ void AddHuntGameplayScripts()
     new HuntGuardLocatorScript();
     new HuntElitePreyScript();
     new HuntActivationScript();
+    new HuntReturnRiftScript();
     new HuntPlayerScript();
 }
