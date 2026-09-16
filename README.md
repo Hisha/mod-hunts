@@ -1,6 +1,6 @@
 # mod-hunts
 
-Standalone Hunt gameplay module for AzerothCore WotLK 3.3.5a. No other custom server module is required and no client patch/MPQ is used.
+Standalone Hunt gameplay module for AzerothCore WotLK 3.3.5a. No other custom server module or client patch is required.
 
 ## Features
 - Repeatable normal Hunts from level 10 through 80.
@@ -34,6 +34,17 @@ Standalone Hunt gameplay module for AzerothCore WotLK 3.3.5a. No other custom se
 
 The canonical base/prebuilt SQL represents the complete current 1.0-era schema/content. Very early development installs that predate the standalone repository should be treated as development conversions: back up the databases and reconcile/reload the canonical `hunt_*` schema/content rather than relying on old `lw_hunt_*` tables.
 
+## Optional Client Integration
+
+`mod-hunts` has no required client addon or client patch. An administrator can choose among three deployment levels:
+
+1. **mod-hunts only:** A stock WoW 3.3.5a client uses the existing Huntmaster gossip experience, including the full Huntmaster's Seal reward store.
+2. **mod-hunts + HuntsUI:** The optional addon uses the existing `HUNTS` addon-message protocol and Blizzard MerchantFrame to present the Seal store. `mod-hunts` still decides the catalog, prices, eligibility, balance, and purchases.
+3. **mod-hunts + mod-content-manager + processed client content:** Content Manager discovers the module-owned `content/mod-hunts.epf`, which may be selected for a generated realm patch. The Schema 2 package declares an inert future Huntmaster's Seal Item.dbc identity. Native item possession and vendor integration remain future work.
+
+`content/mod-hunts.epf` is EPF content source, not a generated patch or MPQ. Content Manager discovers EPFs in module `content` directories and generates the actual client patch from administrator-selected packages. Merely installing either module or finding this EPF does not change Hunt gameplay. The package now uses Schema 2 to declare `mod-hunts / seal / item.id` without a fixed numeric ID. It adds one Item.dbc record using a stock appearance copied from baseline item 6948, and no raw marker. It adds no server item_template, vendor cost, reward, currency, addon message, or gameplay behavior. The package is optional and does not require Content Manager to compile or run `mod-hunts`.
+
+Huntmaster's Seals remain virtual per-character currency in `hunt_stats.huntmaster_seals`. The existing reward, gossip, catalog, purchase, and HuntsUI paths remain authoritative. The client Item.dbc identity is now declared; native item_template and vendor presentation remain future work. That work must preserve server-side balance and purchase validation and choose presentation by reliable client/session capability so patched and unpatched clients can coexist. Content Manager currently supplies EPF discovery, selection, and patch generation; it does not supply a `mod-hunts` client-capability or vendor hook. No such protocol is added in this Item identity phase.
 ## Huntmaster's Seal store
 Huntmaster's Seals are virtual per-character progression currency stored by the server; they consume no bag space and require no DBC/client patch.
 
@@ -281,3 +292,5 @@ Apply `data/sql/db-world/prebuilt/912_return_rift.sql` to the world database and
 The existing saved `giver_spawn_id` and `giver_entry` identify the destination, including hunts resumed after a restart. The exact living, phase-compatible Huntmaster is resolved on its world map and positioned near using the core API. A missing/dead issuer, dynamically summoned issuer without a database spawn ID, or issuer inside an instance cannot provide a rift destination; the click fails without consuming the opportunity. Normal return remains available. Completed hunts loaded at startup do not receive new rifts.
 
 See [Return Rift implementation and testing](RETURN_RIFT.md) for installation, verification, limitations and the in-game test checklist.
+
+
