@@ -294,3 +294,16 @@ The existing saved `giver_spawn_id` and `giver_entry` identify the destination, 
 See [Return Rift implementation and testing](RETURN_RIFT.md) for installation, verification, limitations and the in-game test checklist.
 
 
+
+## Phase 4 native currency proof
+
+`content/mod-hunts.epf` version 4.0.0 declares `seal-currency` referencing logical
+Item `seal`. Its category comes from stock item 40752; Content Manager resolves the
+Seal ItemID and the independent known-currency bit automatically. The readable
+manifest is `content/manifest.phase4.json`. The item_template declaration uses
+BagFamily 8192. Installation, explicit server apply, client publication and manual
+restart are described in mod-content-manager's `docs/PHASE4.md`.
+
+This EPF is optional infrastructure. Hunt rewards, balance, gossip store and
+HuntsUI continue using `hunt_stats.huntmaster_seals`; no gameplay or balance
+migration is included. Native currency acceptance must be tested with the patch.
