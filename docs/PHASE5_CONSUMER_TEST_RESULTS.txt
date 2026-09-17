@@ -1,0 +1,20 @@
+mod-hunts 4.2.0 bounded consumer — local results, not Eitrigg runtime acceptance
+Content Manager production code used unchanged from /home/smithkt/git/mod-content-manager.
+Private MySQL fixture with networking disabled; no server Apply, Activate or Publish call.
+
+=== epf-test.log ===
+PASS EPF 4.2.0: one seal-cost-5, local seal x5, no authored item/cost IDs; existing declarations preserved
+PASS 4.1.0 comparison: only version and extendedCosts changed; other payload bytes identical
+
+=== integration.log ===
+Actual cumulative content (5 files):
+  DBFilesClient/CurrencyCategory.dbc
+  DBFilesClient/CurrencyTypes.dbc
+  DBFilesClient/Item.dbc
+  DBFilesClient/ItemExtendedCost.dbc
+  World/KALIMDOR/SILITHUS/PASSIVEDOODADS/GONG/SilithidGong.m2
+PASS mod-hunts 4.1.0 -> 4.2.0: production parser; install upgrade without intervening build; four retained allocations; local seal x5 resolves to retained item; automatic cost lease; 973-row local composition; exact stock preservation; deterministic rebuild; three existing DBCs and AQ unchanged; automatic baseline registration; STAGED only; vendor-write prohibition; no Apply/Activate
+Local fixture automatically allocated cost ID 3 (not an Eitrigg expectation or authored ID).
+
+PASS source snapshot: mod-hunts files remain byte-identical; no source/config/SQL mutation.
+PASS source snapshot: mod-content-manager files remain byte-identical; no source/config/SQL mutation.
