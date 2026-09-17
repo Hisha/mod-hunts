@@ -2,6 +2,7 @@
 // it does not simulate AzerothCore's async worker pool or Field metadata checks.
 #pragma once
 #include <mysql.h>
+#include <future>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -49,6 +50,7 @@ struct Transaction
     void Append(std::string const& statement){sql.push_back(statement);}
     void Append(TestStatement* s){sql.push_back(s->Sql());delete s;}
 };
+struct TransactionCallback { std::future<bool> m_future; };
 class TestDatabase
 {
     MYSQL* connection=nullptr;
@@ -85,12 +87,31 @@ public:
         mysql_free_result(result);return output->rows.empty()?QueryResult():output;
     }
     std::shared_ptr<Transaction> BeginTransaction(){return std::make_shared<Transaction>();}
-    void DirectCommitTransaction(std::shared_ptr<Transaction> tx)
+    TransactionCallback AsyncCommitTransaction(std::shared_ptr<Transaction> tx)
     {
-        if(beforeCommit){auto fn=std::move(beforeCommit);beforeCommit={};fn();}
-        if(!Execute("START TRANSACTION"))throw std::runtime_error(lastError);
-        for(auto const& sql:tx->sql)if(!Execute(sql)){std::cerr<<"Transaction rejected: "<<lastError<<'\n';Execute("ROLLBACK");return;}
-        if(!Execute("COMMIT"))throw std::runtime_error(lastError);
+        // Test-only synchronous SQL adapter: expose the production result API.
+        // It does NOT model worker connection registration; the core-header
+        // compile check and helper-only future test cover that separate boundary.
+        std::promise<bool> result;
+        TransactionCallback callback{result.get_future()};
+        try
+        {
+            if(beforeCommit){auto fn=std::move(beforeCommit);beforeCommit={};fn();}
+            if(!Execute("START TRANSACTION"))throw std::runtime_error(lastError);
+            for(auto const& sql:tx->sql)
+                if(!Execute(sql))
+                {
+                    std::cerr<<"Transaction rejected: "<<lastError<<'\n';
+                    Execute("ROLLBACK");result.set_value(false);return callback;
+                }
+            if(!Execute("COMMIT"))throw std::runtime_error(lastError);
+            result.set_value(true);
+        }
+        catch (...)
+        {
+            Execute("ROLLBACK");result.set_exception(std::current_exception());
+        }
+        return callback;
     }
 };
 inline TestDatabase WorldDatabase,CharacterDatabase;

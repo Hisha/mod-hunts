@@ -1,5 +1,6 @@
 #include "HuntCurrencyService.h"
 #include "HuntCurrencyMigration.h"
+#include "HuntCharacterTransaction.h"
 #include "ScriptMgr.h"
 #include "DatabaseEnv.h"
 #include "Player.h"
@@ -166,7 +167,12 @@ bool HuntCurrencyService::CompleteNativeHunt(Player* player,std::uint32_t amount
     tx->Append(statsSql);tx->Append("DELETE FROM hunt_runtime WHERE guid="+N(guid));
     auto firstMail=delivery.mails.empty()?0:delivery.mails.front()->messageID;
     tx->Append("UPDATE hunt_currency_realm SET reward_serial="+N(before+1)+",last_reward_guid="+N(guid)+",last_reward_mail="+N(firstMail)+" WHERE id=1");
-    CharacterDatabase.DirectCommitTransaction(tx);
+    if (!hunts::CommitCharacterTransactionAndWait(tx))
+    {
+        Pause("Native Seal delivery transaction failed or completion could not be confirmed; review before retrying");
+        error = _reason;
+        return false;
+    }
     auto receipt=CharacterDatabase.Query("SELECT reward_serial FROM hunt_currency_realm WHERE id=1 AND last_reward_guid="+N(guid)+" AND last_reward_mail="+N(firstMail));
     if(!receipt||receipt->Fetch()[0].Get<std::uint64_t>()!=before+1)
     {Pause("Native completion commit unverified; restart before further Seal operations");error=_reason;return false;}
