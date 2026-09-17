@@ -1,4 +1,6 @@
+#include <limits>
 #include "HuntManager.h"
+#include "HuntCurrencyService.h"
 
 #include "AllCreatureScript.h"
 #include "Chat.h"
@@ -129,6 +131,16 @@ std::vector<SealSpecChoice> GetSealSpecs(Player const* player)
         default:
             return {};
     }
+}
+
+bool NativeProofEligible(Player* player, Creature* creature)
+{
+    if (!sHuntCurrency.IsNative() || !creature || creature->GetEntry()!=sHuntCurrency.Vendor().creatureEntry) return false;
+    // Legacy shoppers may select any valid specialization of their class. Keep
+    // those same eligibility rules without adding a new spec picker.
+    for (auto const& choice:GetSealSpecs(player))
+        if(sHuntMgr.IsNativeProofEligible(player,choice.Spec))return true;
+    return false;
 }
 
 std::string BuildSealAddonOpenPayload(Player* player)
@@ -288,6 +300,14 @@ public:
         ClearGossipMenuFor(player);
         uint32 const guid = player->GetGUID().GetCounter();
 
+        if (!sHuntCurrency.IsLegacy() && action >= ACTION_SEAL_STORE)
+        {
+            sealStoreContexts.erase(guid);huntsAddonCatalogs.erase(guid);huntsAddonStoreGivers.erase(guid);
+            CloseGossipMenuFor(player);
+            if (action==ACTION_SEAL_STORE && NativeProofEligible(player,creature))
+                player->GetSession()->SendListInventory(creature->GetGUID());
+            return true;
+        }
         if (action == ACTION_SEAL_STORE)
         {
             sealStoreContexts[guid] = {};
@@ -434,11 +454,11 @@ private:
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I wish to abandon this hunt.", GOSSIP_SENDER_MAIN, ACTION_ABANDON_HUNT);
         }
 
-        if (sHuntMgr.IsSealStoreAvailable(player))
+        if (sHuntMgr.IsSealStoreAvailable(player) && (sHuntCurrency.IsLegacy() || NativeProofEligible(player,creature)))
         {
             std::ostringstream label;
             uint32 const seals = sHuntMgr.GetSealBalance(player);
-            label << "Browse Huntmaster's Seal rewards. (" << seals << " Seal" << (seals == 1 ? "" : "s") << ")";
+            label << (sHuntCurrency.IsNative()?"Trade physical Seals for the proof reward. (":"Browse Huntmaster's Seal rewards. (") << seals << " Seal" << (seals == 1 ? "" : "s") << ")";
             AddGossipItemFor(player, GOSSIP_ICON_VENDOR, label.str(), GOSSIP_SENDER_MAIN, ACTION_SEAL_STORE);
         }
 
@@ -730,6 +750,8 @@ public:
             huntsAddonSessions.insert(guid);
             response = "HELLO|1";
         }
+        else if (!sHuntCurrency.IsLegacy())
+            response="ERR|Virtual Seal store disabled; use the native Huntmaster vendor.";
         else if (!parts.empty() && parts[0] == "OPEN")
         {
             huntsAddonSessions.insert(guid);
@@ -807,6 +829,27 @@ public:
         msg = prefix + response;
         if (msg.size() > 250)
             msg = prefix + "ERR|response-too-large";
+    }
+
+    void OnPlayerSendListInventory(Player* player, ObjectGuid guid, uint32& vendorEntry) override
+    {
+        Creature* creature=player?ObjectAccessor::GetCreature(*player,guid):nullptr;
+        if (!creature || creature->GetScriptName()!="mod_hunts_huntmaster") return;
+        // Empty vendor list for blocked/misrouted core opcodes. Creature entries
+        // are 24-bit; this sentinel cannot refer to a legitimate template.
+        vendorEntry=NativeProofEligible(player,creature)?0:std::numeric_limits<uint32>::max();
+    }
+    void OnPlayerBeforeBuyItemFromVendor(Player* player,ObjectGuid guid,uint32 vendorSlot,uint32& item,uint8 count,uint8,uint8) override
+    {
+        Creature* creature=player?ObjectAccessor::GetCreature(*player,guid):nullptr;
+        if (!creature || creature->GetScriptName()!="mod_hunts_huntmaster") return;
+        if (!NativeProofEligible(player,creature) || vendorSlot!=0 || item!=sHuntCurrency.Vendor().itemEntry
+            || count!=1 || player->GetSession()->GetCurrentVendor()!=0)
+        {
+            item=0; // Core exits before lookup/debit when this hook clears item.
+            ChatHandler(player->GetSession()).SendSysMessage("This Huntmaster purchase is unavailable.");
+        }
+        // The core alone debits ItemExtendedCost. Never Spend/DestroyItem here.
     }
 
     void OnPlayerBeforeLogout(Player* player) override

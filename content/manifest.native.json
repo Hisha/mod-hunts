@@ -2,8 +2,8 @@
   "schema": 2,
   "package": "mod-hunts",
   "name": "Huntmaster's Seal Native Currency",
-  "version": "4.1.0",
-  "description": "Client and server item identity for future Huntmaster Seal integration; gameplay remains on hunt_stats",
+  "version": "4.3.0",
+  "description": "Activates the physical Seal realm economy and one symbolic proof vendor; requires the native currency module upgrade and durable realm migration.",
   "content": [],
   "dbcRows": [
     {
@@ -52,6 +52,29 @@
       "symbol": "hunts",
       "name": {
         "enUS": "Hunts"
+      }
+    }
+  ],
+  "extendedCosts": [
+    {
+      "symbol": "seal-cost-5",
+      "requirements": [
+        {
+          "item": {
+            "symbol": "seal"
+          },
+          "count": 5
+        }
+      ]
+    }
+  ],
+  "vendorRows": [
+    {
+      "symbol": "seal-proof-vendor",
+      "creatureEntry": 14999989,
+      "itemEntry": 40717,
+      "extendedCost": {
+        "symbol": "seal-cost-5"
       }
     }
   ]

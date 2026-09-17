@@ -204,6 +204,7 @@ public:
     bool IsEliteAvailableToday(Player const* player) const;
     bool IsSealStoreAvailable(Player const* player) const;
     uint32 GetSealBalance(Player const* player) const;
+    bool IsNativeProofEligible(Player* player, uint32 spec) const;
     void ConfigureSealStoreTier(uint8 tier, uint32 cost, uint32 minItemLevel, uint32 maxItemLevel);
     void ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct, uint32 noUpgradeBonusSeals);
     void ConfigureEliteCombat(float rangedPanicRange, float rangedRetreatRangePct, uint32 rangedBlinkCooldownMs, uint32 rangedReactionMs,
@@ -249,7 +250,7 @@ private:
     void AnalyzeFinalLocationLevels(HuntFinalLocationDefinition& location);
     void LoadRuntimes();
     void SaveRuntime(HuntRuntime const& runtime);
-    void DeleteRuntime(uint32 characterGuid);
+    void DeleteRuntime(uint32 characterGuid, bool alreadyDeleted = false);
     HuntZoneDefinition const* SelectZone(uint8 playerLevel, HuntGiverDefinition const& giver) const;
     HuntZoneDefinition const* GetZone(uint32 zoneId) const;
     HuntFinalLocationDefinition const* SelectFinalLocation(HuntRuntime const& runtime, uint8 hunterLevel) const;

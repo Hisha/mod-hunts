@@ -1,4 +1,5 @@
 #include "HuntManager.h"
+#include "HuntCurrencyService.h"
 
 #include "Chat.h"
 #include "Creature.h"
@@ -1171,11 +1172,11 @@ void HuntManager::SaveRuntime(HuntRuntime const& r)
     CharacterDatabase.DirectExecute(sql.str().c_str());
 }
 
-void HuntManager::DeleteRuntime(uint32 guid)
+void HuntManager::DeleteRuntime(uint32 guid, bool alreadyDeleted)
 {
     if (auto it = _runtimes.find(guid); it != _runtimes.end())
         RemoveReturnRift(it->second, "hunt removed");
-    CharacterDatabase.Execute("DELETE FROM `hunt_runtime` WHERE `guid`={}", guid);
+    if (!alreadyDeleted) CharacterDatabase.Execute("DELETE FROM `hunt_runtime` WHERE `guid`={}", guid);
     _abilityTimers.erase(guid);
     _movementReactionTimers.erase(guid);
     _runtimes.erase(guid);
@@ -1374,20 +1375,22 @@ bool HuntManager::IsSealStoreAvailable(Player const* player) const
     if (!_enabled || !player)
         return false;
 
+    if (!sHuntCurrency.Available()) return false;
     uint8 const requiredLevel = std::max(_eliteSealMinimumLevel, _eliteEndgameRewardLevel);
     return player->GetLevel() >= requiredLevel;
 }
 
 uint32 HuntManager::GetSealBalance(Player const* player) const
 {
-    if (!player)
-        return 0;
+    return sHuntCurrency.GetBalance(player);
+}
 
-    if (QueryResult result = CharacterDatabase.Query(
-        "SELECT `huntmaster_seals` FROM `hunt_stats` WHERE `guid`={}", player->GetGUID().GetCounter()))
-        return result->Fetch()[0].Get<uint32>();
-
-    return 0;
+bool HuntManager::IsNativeProofEligible(Player* player, uint32 spec) const
+{
+    if (!sHuntCurrency.IsNative() || GetSealStoreTierCost(1)!=5) return false;
+    for (uint8 slot=0;slot<=static_cast<uint8>(SealStoreSlot::Relic);++slot)
+        if (IsSealStoreItemEligible(player,spec,1,static_cast<SealStoreSlot>(slot),sHuntCurrency.Vendor().itemEntry)) return true;
+    return false;
 }
 
 void HuntManager::ConfigureEliteRewardTargeting(bool requireUpgrade, float upgradePoolPct, uint32 noUpgradeBonusSeals)
@@ -1509,6 +1512,9 @@ std::vector<SealStoreItem> HuntManager::BuildSealStoreItems(Player* player, uint
 
 bool HuntManager::PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier, uint32 itemId, std::string& message)
 {
+    if (!sHuntCurrency.IsLegacy())
+    { message="Use the native Huntmaster vendor; virtual Seal purchases are disabled."; return false; }
+
     if (!IsSealStoreAvailable(player))
     {
         message = "Huntmaster's Seal rewards are reserved for level-cap hunters.";
@@ -1552,10 +1558,8 @@ bool HuntManager::PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier,
         return false;
     }
 
-    uint32 const guid = player->GetGUID().GetCounter();
-    CharacterDatabase.DirectExecute(
-        "UPDATE `hunt_stats` SET `huntmaster_seals`=`huntmaster_seals`-{} WHERE `guid`={} AND `huntmaster_seals`>={}",
-        cost, guid, cost);
+    if (!sHuntCurrency.SpendLegacy(player,cost))
+    { message="Seal purchase could not be completed."; return false; }
 
     if (Item* item = player->StoreNewItem(dest, itemId, true))
     {
@@ -1573,8 +1577,7 @@ bool HuntManager::PurchaseSealStoreItem(Player* player, uint32 spec, uint8 tier,
 
     // Extremely unlikely after CanStoreNewItem succeeds, but never consume a
     // virtual currency if the item could not actually be created.
-    CharacterDatabase.DirectExecute(
-        "UPDATE `hunt_stats` SET `huntmaster_seals`=`huntmaster_seals`+{} WHERE `guid`={}", cost, guid);
+    sHuntCurrency.RefundLegacy(player,cost);
     message = "The purchase could not be completed; your Huntmaster's Seals were restored.";
     return false;
 }
@@ -1645,6 +1648,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     HuntRuntime const& r=it->second;
     if(r.State!=HuntState::ReadyToTurnIn){message="Your quarry still lives.";return false;}
     if(r.GiverEntry!=giver->GetEntry() || (r.GiverSpawnId && r.GiverSpawnId!=giver->GetSpawnId())){message="Return to the Huntmaster who gave you this hunt.";return false;}
+    if (!sHuntCurrency.Available()) {message="Seal operations are paused: "+sHuntCurrency.Reason();return false;}
     HuntRuntime& mutableRuntime=it->second; RemoveFinalActivator(player,mutableRuntime);
 
     HuntDefinition const* hunt = GetDefinition(r.PreyId);
@@ -1831,6 +1835,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
     uint32 const bonusSeals = (sealEligible && noUpgradeEliteReward) ? _eliteNoUpgradeBonusSeals : 0;
     uint32 const sealsAwarded = sealEligible ? (_eliteSealsPerCompletion + bonusSeals) : 0;
 
+    uint32 const virtualAward=sHuntCurrency.VirtualAward(sealsAwarded);
     char const* qualityColumn = nullptr;
     if (rewardedItemId)
     {
@@ -1846,7 +1851,7 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
              << (qualityColumn && std::string(qualityColumn)=="blues_received" ? 1 : 0) << ","
              << (qualityColumn && std::string(qualityColumn)=="epics_received" ? 1 : 0) << ","
              << (eliteHunt ? 1 : 0) << "," << (eliteHunt ? 1 : 0) << ","
-             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << sealsAwarded << ",CURRENT_TIMESTAMP()) "
+             << (eliteHunt ? "CURRENT_DATE()" : "NULL") << "," << virtualAward << ",CURRENT_TIMESTAMP()) "
              << "ON DUPLICATE KEY UPDATE `total_completed`=`total_completed`+1, "
              << "`daily_completed`=IF(`daily_reset_date`=CURRENT_DATE(),`daily_completed`+1,1), "
              << "`daily_reset_date`=CURRENT_DATE(),";
@@ -1854,12 +1859,18 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         statsSql << "`elite_total_completed`=`elite_total_completed`+1,"
                  << "`elite_daily_completed`=IF(`elite_daily_reset_date`=CURRENT_DATE(),`elite_daily_completed`+1,1),"
                  << "`elite_daily_reset_date`=CURRENT_DATE(),";
-    if (sealsAwarded)
-        statsSql << "`huntmaster_seals`=`huntmaster_seals`+" << sealsAwarded << ",";
+    if (virtualAward)
+        statsSql << "`huntmaster_seals`=`huntmaster_seals`+" << virtualAward << ",";
     if (qualityColumn)
         statsSql << "`" << qualityColumn << "`=`" << qualityColumn << "`+1,";
     statsSql << "`last_completed_at`=CURRENT_TIMESTAMP()";
-    CharacterDatabase.DirectExecute(statsSql.str().c_str());
+    if (sHuntCurrency.IsNative())
+    {
+        // Keep existing XP/gold/equipment timing and quantities. Only the Seal
+        // delivery, completion stats and durable hunt removal share this tx.
+        if (!sHuntCurrency.CompleteNativeHunt(player,sealsAwarded,statsSql.str(),message)) return false;
+    }
+    else CharacterDatabase.DirectExecute(statsSql.str().c_str());
 
     std::ostringstream rewardMessage;
     rewardMessage << "A fine hunt. Reward: ";
@@ -1885,15 +1896,13 @@ bool HuntManager::TurnInHunt(Player* player, Creature* giver, std::string& messa
         rewardMessage << ". Your bags were too full for the item reward";
     if (sealsAwarded)
     {
-        uint32 sealBalance = sealsAwarded;
-        if (QueryResult seals = CharacterDatabase.Query(
-            "SELECT `huntmaster_seals` FROM `hunt_stats` WHERE `guid`={}", r.CharacterGuid))
-            sealBalance = seals->Fetch()[0].Get<uint32>();
+        uint32 sealBalance = GetSealBalance(player);
         rewardMessage << ", and " << sealsAwarded << " Huntmaster's Seal" << (sealsAwarded == 1 ? "" : "s") << " total for this Elite Hunt (" << sealBalance << " total balance)";
     }
+    if (sHuntCurrency.IsNative() && sealsAwarded) rewardMessage << ". Your physical Seals are attached to mail; collect them to add to your usable balance";
     rewardMessage << ".";
 
-    DeleteRuntime(r.CharacterGuid); message=rewardMessage.str(); return true;
+    DeleteRuntime(r.CharacterGuid,sHuntCurrency.IsNative()); message=rewardMessage.str(); return true;
 }
 
 uint8 HuntManager::GetNextAmbushThreshold(HuntRuntime const& r, HuntDefinition const& h) const
@@ -3780,7 +3789,7 @@ std::string HuntManager::BuildStats(Player const* player) const
         << " | epic rewards " << f[4].Get<uint32>()
         << " | Elite Hunts " << f[6].Get<uint32>();
     if (player->GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
-        out << " | Huntmaster's Seals " << f[5].Get<uint32>();
+        out << " | Huntmaster's Seals " << GetSealBalance(player);
     return out.str();
 }
 

@@ -1,4 +1,5 @@
 #include "HuntManager.h"
+#include "HuntCurrencyService.h"
 #include "HuntCreatureTemplateManager.h"
 
 #include "Chat.h"
@@ -205,7 +206,10 @@ public:
     void OnStartup() override
     {
         if (huntsConfig.GetConfigValue<bool>(HuntsConfig::Enabled))
+        {
+            sHuntCurrency.Initialize();
             sHuntMgr.Initialize();
+        }
     }
 
     void OnUpdate(uint32 diff) override

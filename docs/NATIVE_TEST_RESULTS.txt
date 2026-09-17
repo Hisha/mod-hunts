@@ -1,0 +1,74 @@
+epf.log
+PASS EPF 4.3.0: one symbolic native vendor; one seal-cost-5, local seal x5, no authored item/cost IDs; existing declarations preserved
+PASS 4.2.0 comparison: only version, description and vendorRows changed; other payload bytes identical
+
+
+unit.log
+DBC reader tests passed
+dbc_reader: PASS
+Phase 2 allocator/composer tests passed
+phase2: PASS
+occupancy: PASS
+server_bundle: PASS
+schema2: PASS
+Local client baseline records 26; auto bit 4
+Currency allocator/composer/parity tests passed
+currency: PASS
+category composition, fallback, occupancy, retained leases: PASS
+category: PASS
+PASS real local baseline: 972 rows preserved exactly; this is not Eitrigg acceptance
+PASS ItemExtendedCost descriptor, malformed data, preservation, counts, deterministic composition/readback, typed allocation/retention, parser, symbolic references, canonical artifact
+extended_cost: PASS
+
+
+migration.log
+Expected stopped migration: Injected item creation failure
+Transaction rejected: Duplicate entry '1' for key 'hunt_currency_realm.PRIMARY'
+Expected stopped migration: Delivery commit unverified; restart resumes durable pending work without reissuing receipts
+Expected stopped migration: Legacy balance belongs to missing character 99; administrative repair required
+Production realm migration SQL: zero/fresh, offline balances, snapshot preservation, chunking, restart, partial preparation and transaction rollback PASS
+
+
+service.log
+Transaction rejected: delivery failure
+PASS production currency service: standalone, inactive/invalid capability, dynamic IDs, realm migration, physical balance/award, preserved virtual balance, atomic mail rollback, retry and no downgrade to virtual
+
+
+vendor.log
+Transaction rejected: Duplicate entry '1' for key 'content_manager_build_lock.PRIMARY'
+Transaction rejected: injected rollback
+PASS symbolic vendor, deterministic composition, retained resources, STAGED isolation, unowned collision, race/drift rollback, apply idempotence, activation, all DBC and AQ payloads unchanged
+
+
+cost-regression.log
+Transaction rejected: Duplicate entry '1' for key 'content_manager_build_lock.PRIMARY'
+Transaction rejected: Duplicate entry '1' for key 'content_manager_build_lock.PRIMARY'
+PASS Phase 5 real-MySQL production Build/Apply: 4 EPFs; all occupancy sources; preserved Seal/category/bit leases; cross-package symbols; stock and AQ bytes; deterministic restart; generic registry/history; drift; collision; raw conflict; unresolved symbol; parity; immutable applied costs; rollback; explicit deployment; no vendor writes
+
+
+syntax.log
+ContentCapabilityProvider 0 
+mod_content_manager_loader 0 
+ContentVendorRow 0 
+ContentVendorServer 0 
+ContentBuildService 0 
+ContentCommands 0 
+ContentManager 0 
+ContentAllocationRegistry 0 
+ContentServerDeployment 0 
+ContentCurrencyServer 0 
+ContentServerOwnership 0 
+ContentBaselineRegistry 0 
+CurrencyCategoryDbcComposer 0 
+ItemExtendedCostDbc 0 
+ContentExtendedCostServer 0 
+ContentServerBundle 0 
+ContentPackage 0 
+
+
+hunts-syntax.log
+HuntCurrencyMigration 0 
+HuntCurrencyService 0 
+HuntManager 0 
+HuntScripts 0 
+HuntsModule 0 
