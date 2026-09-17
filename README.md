@@ -297,12 +297,14 @@ See [Return Rift implementation and testing](RETURN_RIFT.md) for installation, v
 
 ## Phase 4 native currency proof
 
-`content/mod-hunts.epf` version 4.0.0 declares `seal-currency` referencing logical
-Item `seal`. Its category comes from stock item 40752; Content Manager resolves the
-Seal ItemID and the independent known-currency bit automatically. The readable
+`content/mod-hunts.epf` version 4.1.0 declares `seal-currency` referencing logical
+Item `seal` and logical category `hunts`, with authored enUS display name `Hunts`.
+Content Manager retains the Seal item/known-bit leases and allocates an independent
+`currency-category.id`; the manifest contains no concrete category ID. The readable
 manifest is `content/manifest.phase4.json`. The item_template declaration uses
 BagFamily 8192. Installation, explicit server apply, client publication and manual
-restart are described in mod-content-manager's `docs/PHASE4.md`.
+restart are described in mod-content-manager's `docs/PHASE4_CATEGORY_BASELINES.md`. Baselines are validated
+and registered automatically; later changes require explicit review/approval.
 
 This EPF is optional infrastructure. Hunt rewards, balance, gossip store and
 HuntsUI continue using `hunt_stats.huntmaster_seals`; no gameplay or balance
