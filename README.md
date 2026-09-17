@@ -1,3 +1,5 @@
+> EPF 4.3.0: native realm currency cutover and one-item vendor proof. Read [the deployment handoff](docs/NATIVE_SEAL_REALM_CUTOVER.md) before installing/activating this version. Earlier phase notes below describe the previous infrastructure-only releases.
+
 # mod-hunts
 
 Standalone Hunt gameplay module for AzerothCore WotLK 3.3.5a. No other custom server module or client patch is required.

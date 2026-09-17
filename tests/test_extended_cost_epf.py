@@ -12,9 +12,10 @@ def check(epf, previous=None):
         assert len(archive.namelist()) == len(set(archive.namelist()))
         manifest = json.loads(archive.read('manifest.json'))
         assert manifest['schema'] == 2 and manifest['package'] == 'mod-hunts'
-        assert manifest['version'] == '4.2.0'
+        assert manifest['version'] == '4.3.0'
         expected = [{'symbol': 'seal-cost-5', 'requirements': [
             {'item': {'symbol': 'seal'}, 'count': 5}]}]
+        assert manifest['vendorRows'] == [{'symbol':'seal-proof-vendor','creatureEntry':14999989,'itemEntry':40717,'extendedCost':{'symbol':'seal-cost-5'}}]
         assert manifest['extendedCosts'] == expected
         assert type(manifest['extendedCosts'][0]['requirements'][0]['count']) is int
         assert len(manifest['dbcRows']) == len(manifest['serverRows']) == 1
@@ -28,18 +29,19 @@ def check(epf, previous=None):
         if previous:
             with zipfile.ZipFile(previous) as old:
                 before = json.loads(old.read('manifest.json'))
-                assert before['version'] == '4.1.0' and 'extendedCosts' not in before
+                assert before['version'] == '4.2.0' and 'vendorRows' not in before
                 restored = dict(manifest)
-                restored['version'] = '4.1.0'
-                del restored['extendedCosts']
+                restored['version'] = '4.2.0'
+                restored['description'] = before['description']
+                del restored['vendorRows']
                 assert restored == before, 'Unrelated manifest content changed'
                 assert archive.namelist() == old.namelist(), 'Archive entries changed'
                 for name in old.namelist():
                     if name != 'manifest.json':
                         assert archive.read(name) == old.read(name)
-    print('PASS EPF 4.2.0: one seal-cost-5, local seal x5, no authored item/cost IDs; existing declarations preserved')
+    print('PASS EPF 4.3.0: one symbolic native vendor; one seal-cost-5, local seal x5, no authored item/cost IDs; existing declarations preserved')
     if previous:
-        print('PASS 4.1.0 comparison: only version and extendedCosts changed; other payload bytes identical')
+        print('PASS 4.2.0 comparison: only version, description and vendorRows changed; other payload bytes identical')
 
 
 if __name__ == '__main__':
